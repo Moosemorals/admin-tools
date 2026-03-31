@@ -1,0 +1,27 @@
+# Build output
+bin/
+obj/
+dist/
+publish/
+
+# NuGet
+*.nupkg
+*.snupkg
+.nuget/
+
+# User-specific files
+*.user
+*.suo
+.vs/
+.vscode/
+*.DotSettings.user
+
+# Runtime artefacts
+*.log
+
+# Migration tool – user config (contains secrets)
+src/GitMigrator/config.json
+
+# Migration state files (user-specific, not part of the tool)
+.migration-state.json
+*.migration-state.json
