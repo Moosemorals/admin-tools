@@ -8,6 +8,7 @@ public enum MigrationPhase
     Initial,
     Discovering,
     Cloning,
+    Grouping,        // identify repos sharing git history; merge into a single canonical clone
     UpdatingRemotes,
     Complete
 }
@@ -64,6 +65,29 @@ public class RemoteUpdateState
     public string? Error { get; set; }
 }
 
+/// <summary>
+/// A set of repos that share git history (detected via overlapping commit SHAs).
+/// All members are merged into the canonical clone; their separate clones are removed.
+/// </summary>
+public class RepoGroup
+{
+    /// <summary>RepoInfo.Id of the repo whose directory is the canonical local clone.</summary>
+    [JsonPropertyName("canonicalRepoId")]
+    public string CanonicalRepoId { get; set; } = "";
+
+    /// <summary>All members of this group (canonical first).</summary>
+    [JsonPropertyName("memberRepoIds")]
+    public List<string> MemberRepoIds { get; set; } = new();
+
+    /// <summary>True once all non-canonical members have been fetched into canonical.</summary>
+    [JsonPropertyName("fetchComplete")]
+    public bool FetchComplete { get; set; }
+
+    /// <summary>Members whose content has already been fetched + whose directory has been removed.</summary>
+    [JsonPropertyName("consolidatedMemberIds")]
+    public List<string> ConsolidatedMemberIds { get; set; } = new();
+}
+
 public class MigrationState
 {
     [JsonPropertyName("version")]
@@ -84,6 +108,17 @@ public class MigrationState
     /// <summary>Per-repo clone progress. Key = RepoInfo.Id.</summary>
     [JsonPropertyName("cloneStates")]
     public Dictionary<string, RepoCloneState> CloneStates { get; set; } = new();
+
+    /// <summary>
+    /// Groups of repos that share git history.
+    /// Populated during the Grouping phase. Empty list = grouping not yet run.
+    /// </summary>
+    [JsonPropertyName("repoGroups")]
+    public List<RepoGroup> RepoGroups { get; set; } = new();
+
+    /// <summary>True once the Grouping phase has fully completed.</summary>
+    [JsonPropertyName("groupingComplete")]
+    public bool GroupingComplete { get; set; }
 
     /// <summary>Planned and completed remote updates / additions.</summary>
     [JsonPropertyName("remoteUpdates")]

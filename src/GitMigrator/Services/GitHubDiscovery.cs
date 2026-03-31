@@ -14,18 +14,15 @@ public class GitHubDiscovery
     private readonly GitHubSourceConfig _cfg;
     private readonly HttpClient _http;
     private readonly ILogger<GitHubDiscovery> _logger;
-    private readonly string _targetFolder;
 
     public GitHubDiscovery(
         GitHubSourceConfig cfg,
         HttpClient http,
-        ILogger<GitHubDiscovery> logger,
-        string targetFolder)
+        ILogger<GitHubDiscovery> logger)
     {
         _cfg = cfg;
         _http = http;
         _logger = logger;
-        _targetFolder = targetFolder;
 
         _http.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", cfg.Token);
@@ -169,7 +166,8 @@ public class GitHubDiscovery
         var parts = fullName.Split('/');
         var actualOwner = parts.Length >= 2 ? parts[0] : owner;
 
-        var localPath = Path.Combine(_targetFolder, "github.com", actualOwner, name);
+        // LocalPath is assigned later by MigrationRunner.AssignLocalPaths() based on the
+        // flat layout (targetFolder/<name>) with collision-resolution and git-history grouping.
 
         return new RepoInfo
         {
@@ -180,7 +178,7 @@ public class GitHubDiscovery
             FullName = fullName,
             CloneUrl = cloneUrl,
             SshUrl = sshUrl,
-            LocalPath = localPath,
+            LocalPath = "",    // assigned by runner
             ForkOf = forkOf,
             DefaultBranch = defaultBranch,
             IsPrivate = isPrivate,

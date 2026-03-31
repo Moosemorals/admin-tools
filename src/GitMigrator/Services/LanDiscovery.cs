@@ -12,16 +12,13 @@ public class LanDiscovery
 {
     private readonly LanSourceConfig _cfg;
     private readonly ILogger<LanDiscovery> _logger;
-    private readonly string _targetFolder;
 
     public LanDiscovery(
         LanSourceConfig cfg,
-        ILogger<LanDiscovery> logger,
-        string targetFolder)
+        ILogger<LanDiscovery> logger)
     {
         _cfg = cfg;
         _logger = logger;
-        _targetFolder = targetFolder;
     }
 
     public async Task<List<RepoInfo>> DiscoverReposAsync()
@@ -151,11 +148,7 @@ public class LanDiscovery
             ? $"ssh://{sshTarget}:{_cfg.SshPort}{remotePath}"
             : $"{sshTarget}:{remotePath}";
 
-        // Local path: {targetFolder}/lan/{hostname}/{absolute-path-on-host}
-        // Strip leading slash from remotePath so Path.Combine works correctly
-        var relPath = remotePath.TrimStart('/');
-        var localPath = Path.Combine(_targetFolder, "lan", _cfg.Host, relPath);
-
+        // LocalPath is assigned later by MigrationRunner.AssignLocalPaths().
         var id = $"lan:{_cfg.Host}:{remotePath}";
 
         return new RepoInfo
@@ -167,7 +160,7 @@ public class LanDiscovery
             FullName = $"{_cfg.Host}{remotePath}",
             CloneUrl = sshCloneUrl,   // for LAN, CloneUrl and SshUrl are the same
             SshUrl = sshCloneUrl,
-            LocalPath = localPath,
+            LocalPath = "",    // assigned by runner
             DefaultBranch = defaultBranch,
             OriginalRemotes = originalRemotes
         };

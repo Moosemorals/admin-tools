@@ -1,9 +1,15 @@
 {
   // Absolute (or relative) path to the folder where all repositories will be cloned.
-  // Sub-directories are created automatically:
-  //   <targetFolder>/github.com/<owner>/<repo>
-  //   <targetFolder>/gitlab.com/<namespace>/<repo>    (or the self-hosted host)
-  //   <targetFolder>/lan/<hostname>/<absolute-path-on-host>
+  // Each repo is placed directly under targetFolder using its basename:
+  //   <targetFolder>/myapp/
+  //   <targetFolder>/scripts/
+  //
+  // If two unrelated repos share the same basename, the second gets a numeric suffix:
+  //   <targetFolder>/myapp/    ← first occurrence
+  //   <targetFolder>/myapp-2/  ← second unrelated repo with same name
+  //
+  // Repos identified as the same repository (sharing git history) are merged into a
+  // single canonical clone regardless of which source they came from.
   "targetFolder": "/home/alice/repos",
 
   // Optional: override the location of the state file used for resume support.

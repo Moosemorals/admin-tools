@@ -26,18 +26,23 @@ public class GitService
     /// Runs a git command and returns (success, stdout, stderr).
     /// The caller is responsible for sanitising <paramref name="args"/> before logging.
     /// </summary>
+    /// <param name="readOnly">
+    /// When true the command is never skipped in dry-run mode (it does not modify state).
+    /// Use this for commands like <c>log</c>, <c>remote -v</c> that only read from the repo.
+    /// </param>
     public async Task<(bool Success, string Output, string Error)> RunAsync(
         string workDir,
         IEnumerable<string> args,
         Dictionary<string, string>? extraEnv = null,
-        int timeoutSeconds = 600)
+        int timeoutSeconds = 600,
+        bool readOnly = false)
     {
         var argList = args.ToList();
         // Mask any arg that looks like it contains a token (has '@' after "https://...")
         var displayArgs = argList.Select(MaskSecrets);
         _logger.LogDebug("git {args} (cwd: {dir})", string.Join(' ', displayArgs), workDir);
 
-        if (_dryRun)
+        if (_dryRun && !readOnly)
         {
             _logger.LogInformation("[DRY RUN] git {args}", string.Join(' ', displayArgs));
             return (true, string.Empty, string.Empty);
@@ -151,7 +156,7 @@ public class GitService
         if (!Directory.Exists(localPath))
             return result;
 
-        var (success, output, _) = await RunAsync(localPath, ["remote", "-v"]);
+        var (success, output, _) = await RunAsync(localPath, ["remote", "-v"], readOnly: true);
         if (!success)
             return result;
 
@@ -207,6 +212,37 @@ public class GitService
             return false;
 
         var (success, _, _) = await RunAsync(path, ["rev-parse", "--git-dir"], timeoutSeconds: 10);
+        return success;
+    }
+
+    /// <summary>
+    /// Returns the set of all commit SHAs reachable from any branch or tag in the repo.
+    /// Uses <c>git log --all --format=%H</c>. Always runs even in dry-run mode (read-only).
+    /// </summary>
+    public async Task<HashSet<string>> GetAllCommitShasAsync(string localPath, int timeoutSeconds = 180)
+    {
+        if (!Directory.Exists(localPath))
+            return [];
+
+        var (_, output, _) = await RunAsync(localPath,
+            ["log", "--all", "--format=%H"],
+            timeoutSeconds: timeoutSeconds,
+            readOnly: true);
+
+        return output
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(s => (s.Length == 40 || s.Length == 64) && s.All(c => (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+    }
+
+    /// <summary>Fetch all refs from an already-configured remote.</summary>
+    public async Task<bool> FetchRemoteAsync(string localPath, string remoteName, int timeoutSeconds = 300)
+    {
+        _logger.LogInformation("  fetch {remote} (in {path})", remoteName, localPath);
+        var (success, _, error) = await RunAsync(localPath, ["fetch", remoteName],
+            timeoutSeconds: timeoutSeconds);
+        if (!success)
+            _logger.LogError("  fetch failed: {err}", error.Trim());
         return success;
     }
 

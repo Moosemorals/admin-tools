@@ -76,8 +76,10 @@ public class StateManager
         State.DiscoveryComplete = false;
         State.DiscoveredRepos.Clear();
         State.Phase = MigrationPhase.Initial;
-        // Clone states and remote updates derived from the previous discovery are also invalid
+        // Clone states, grouping, and remote updates derived from the previous discovery are also invalid
         State.CloneStates.Clear();
+        State.RepoGroups.Clear();
+        State.GroupingComplete = false;
         State.RemoteUpdates.Clear();
         _logger.LogInformation("Discovery state reset.");
     }

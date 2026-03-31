@@ -14,27 +14,19 @@ public class GitLabDiscovery
     private readonly GitLabSourceConfig _cfg;
     private readonly HttpClient _http;
     private readonly ILogger<GitLabDiscovery> _logger;
-    private readonly string _targetFolder;
-
-    // Derived from baseUrl, e.g. "gitlab.com" or "gitlab.company.com"
-    private readonly string _hostLabel;
 
     public GitLabDiscovery(
         GitLabSourceConfig cfg,
         HttpClient http,
-        ILogger<GitLabDiscovery> logger,
-        string targetFolder)
+        ILogger<GitLabDiscovery> logger)
     {
         _cfg = cfg;
         _http = http;
         _logger = logger;
-        _targetFolder = targetFolder;
 
         _http.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", cfg.Token);
         _http.DefaultRequestHeaders.UserAgent.ParseAdd("GitMigrator/1.0");
-
-        _hostLabel = new Uri(cfg.BaseUrl).Host.ToLowerInvariant();
     }
 
     private string ApiBase => _cfg.BaseUrl.TrimEnd('/') + "/api/v4";
@@ -167,18 +159,18 @@ public class GitLabDiscovery
         }
 
         // nameWithNamespace is "group/subgroup/project" or "user/project"
-        var localPath = Path.Combine(_targetFolder, _hostLabel, nameWithNamespace.Replace('/', Path.DirectorySeparatorChar));
+        // LocalPath is assigned later by MigrationRunner.AssignLocalPaths().
 
         return new RepoInfo
         {
             Id = $"gitlab:{nameWithNamespace}",
             SourceType = "gitlab",
-            SourceHost = _hostLabel,
+            SourceHost = new Uri(_cfg.BaseUrl).Host.ToLowerInvariant(),
             Name = path,
             FullName = nameWithNamespace,
             CloneUrl = cloneUrl,
             SshUrl = sshUrl,
-            LocalPath = localPath,
+            LocalPath = "",    // assigned by runner
             ForkOf = forkOf,
             DefaultBranch = defaultBranch,
             IsPrivate = isPrivate,
