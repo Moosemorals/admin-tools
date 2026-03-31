@@ -152,7 +152,7 @@ histories** (confirmed by the grouping phase), they are kept as separate folders
 If the grouping phase determines that two repos share any git commit (they are the
 same repository, a fork, or a clone), they are **merged into a single folder**:
 
-- The most authoritative source (GitHub &gt; GitLab &gt; LAN) becomes the canonical clone.
+- The most authoritative source (LAN > GitLab > GitHub) becomes the canonical clone.
 - All other copies are fetched into the canonical clone (their branches appear as
   `merged-N/<branch>`).
 - The redundant local clone directories are removed.

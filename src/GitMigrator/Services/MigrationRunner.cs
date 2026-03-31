@@ -181,9 +181,9 @@ public class MigrationRunner
     /// </summary>
     private void AssignLocalPaths()
     {
-        // Sort by source priority, then alphabetically for determinism
+        // Sort by source priority (LAN > GitLab > GitHub), then alphabetically for determinism
         var ordered = _state.State.DiscoveredRepos
-            .OrderBy(r => r.SourceType switch { "github" => 0, "gitlab" => 1, _ => 2 })
+            .OrderBy(r => r.SourceType switch { "lan" => 0, "gitlab" => 1, _ => 2 })
             .ThenBy(r => r.Name, StringComparer.OrdinalIgnoreCase)
             .ThenBy(r => r.FullName, StringComparer.OrdinalIgnoreCase)
             .ToList();
@@ -380,10 +380,10 @@ public class MigrationRunner
             foreach (var (_, memberIds) in membersByRoot)
             {
                 // Within a group the canonical clone is the one from the most authoritative source
-                // (GitHub wins over GitLab wins over LAN), with ties broken by full name.
+                // (LAN wins over GitLab wins over GitHub), with ties broken by full name.
                 var sorted = memberIds
                     .Select(id => _state.State.DiscoveredRepos.First(r => r.Id == id))
-                    .OrderBy(r => r.SourceType switch { "github" => 0, "gitlab" => 1, _ => 2 })
+                    .OrderBy(r => r.SourceType switch { "lan" => 0, "gitlab" => 1, _ => 2 })
                     .ThenBy(r => r.FullName, StringComparer.OrdinalIgnoreCase)
                     .ToList();
 
