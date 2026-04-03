@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Copilot CLI Wrapper</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: ui-monospace, "Cascadia Code", "Fira Code", monospace;
+      font-size: 13px;
+      background: #0d1117;
+      color: #c9d1d9;
+      display: flex;
+      flex-direction: column;
+      height: 100dvh;
+    }
+
+    /* ── Header ── */
+    header {
+      padding: 10px 16px;
+      background: #161b22;
+      border-bottom: 1px solid #30363d;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    header h1 { font-size: 15px; color: #58a6ff; flex: 1; }
+    #status {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 10px;
+      background: #21262d;
+      color: #8b949e;
+    }
+    #status.connected { color: #3fb950; }
+    #status.error { color: #f85149; }
+
+    /* ── Events feed ── */
+    #feed {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    /* ── Event card ── */
+    .event-card {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .event-card > summary {
+      padding: 6px 10px;
+      cursor: pointer;
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      list-style: none;
+      user-select: none;
+    }
+    .event-card > summary::-webkit-details-marker { display: none; }
+    .event-card > summary::before { content: "▶"; font-size: 9px; color: #8b949e; }
+    .event-card[open] > summary::before { content: "▼"; }
+
+    .event-type {
+      font-weight: 700;
+      color: #79c0ff;
+    }
+    .event-ts {
+      color: #8b949e;
+      font-size: 11px;
+      margin-left: auto;
+    }
+
+    /* ── Property rows ── */
+    .props { padding: 4px 10px 8px 20px; display: flex; flex-direction: column; gap: 3px; }
+
+    .prop-row { display: flex; align-items: baseline; gap: 6px; }
+    .prop-key { color: #d2a8ff; min-width: 140px; flex-shrink: 0; }
+    .prop-scalar { color: #a5d6ff; white-space: pre-wrap; word-break: break-all; }
+    .prop-null { color: #6e7681; font-style: italic; }
+    .prop-bool { color: #79c0ff; }
+    .prop-number { color: #f2cc60; }
+    .prop-string { color: #a5d6ff; }
+
+    /* ── Nested details for complex/large values ── */
+    .nested-details {
+      width: 100%;
+    }
+    .nested-details > summary {
+      cursor: pointer;
+      color: #8b949e;
+      list-style: none;
+      display: flex;
+      align-items: baseline;
+      gap: 4px;
+    }
+    .nested-details > summary::-webkit-details-marker { display: none; }
+    .nested-details > summary::before { content: "▶"; font-size: 9px; }
+    .nested-details[open] > summary::before { content: "▼"; }
+    .nested-details > summary .prop-key { color: #d2a8ff; }
+    .nested-details > summary .preview { color: #8b949e; font-size: 11px; }
+
+    .nested-content { padding: 3px 0 0 16px; display: flex; flex-direction: column; gap: 3px; }
+
+    pre.prop-value {
+      white-space: pre-wrap;
+      word-break: break-all;
+      color: #a5d6ff;
+      background: #0d1117;
+      border: 1px solid #21262d;
+      border-radius: 4px;
+      padding: 6px 8px;
+      margin-top: 3px;
+      font-size: 12px;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    /* ── Input area ── */
+    #input-area {
+      padding: 10px 16px;
+      background: #161b22;
+      border-top: 1px solid #30363d;
+      display: flex;
+      gap: 8px;
+    }
+    #prompt {
+      flex: 1;
+      background: #0d1117;
+      color: #c9d1d9;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      padding: 8px 10px;
+      font: inherit;
+      resize: none;
+      height: 60px;
+    }
+    #prompt:focus { outline: none; border-color: #58a6ff; }
+    #send-btn {
+      background: #238636;
+      color: #fff;
+      border: 1px solid #2ea043;
+      border-radius: 6px;
+      padding: 0 18px;
+      font: inherit;
+      cursor: pointer;
+      align-self: flex-end;
+      height: 36px;
+    }
+    #send-btn:hover { background: #2ea043; }
+    #send-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+    /* Event-type colour hints */
+    .event-card.type-assistant   { border-left: 3px solid #3fb950; }
+    .event-card.type-user        { border-left: 3px solid #58a6ff; }
+    .event-card.type-tool        { border-left: 3px solid #f2cc60; }
+    .event-card.type-session     { border-left: 3px solid #bc8cff; }
+    .event-card.type-error       { border-left: 3px solid #f85149; }
+    .event-card.type-system      { border-left: 3px solid #8b949e; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>⚡ Copilot CLI Wrapper</h1>
+  <span id="status">connecting…</span>
+</header>
+
+<div id="feed"></div>
+
+<div id="input-area">
+  <textarea id="prompt" placeholder="Send instructions to Copilot… (Ctrl+Enter to send)"></textarea>
+  <button id="send-btn" disabled>Send</button>
+</div>
+
+<script>
+  const feed     = document.getElementById('feed');
+  const statusEl = document.getElementById('status');
+  const promptEl = document.getElementById('prompt');
+  const sendBtn  = document.getElementById('send-btn');
+
+  // ── SSE connection ──────────────────────────────────────────────────────────
+  let es = null;
+
+  function connect() {
+    es = new EventSource('/events');
+
+    es.onopen = () => {
+      statusEl.textContent = 'connected';
+      statusEl.className   = 'connected';
+      sendBtn.disabled     = false;
+    };
+
+    es.onmessage = (e) => {
+      try {
+        const data = JSON.parse(e.data);
+        prependEvent(data);
+      } catch (err) {
+        console.error('Failed to parse SSE message:', err, e.data);
+      }
+    };
+
+    es.onerror = () => {
+      statusEl.textContent = 'disconnected – retrying…';
+      statusEl.className   = 'error';
+      sendBtn.disabled     = true;
+    };
+  }
+
+  connect();
+
+  // ── Send prompt ─────────────────────────────────────────────────────────────
+  async function sendPrompt() {
+    const text = promptEl.value.trim();
+    if (!text) return;
+
+    sendBtn.disabled = true;
+    promptEl.disabled = true;
+
+    try {
+      const res = await fetch('/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: text,
+      });
+      if (!res.ok) {
+        const msg = await res.text();
+        prependEvent({ _eventType: 'SendError', _timestamp: new Date().toISOString(), message: msg });
+      } else {
+        promptEl.value = '';
+      }
+    } catch (err) {
+      prependEvent({ _eventType: 'NetworkError', _timestamp: new Date().toISOString(), error: String(err) });
+    } finally {
+      sendBtn.disabled = false;
+      promptEl.disabled = false;
+      promptEl.focus();
+    }
+  }
+
+  sendBtn.addEventListener('click', sendPrompt);
+  promptEl.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && e.ctrlKey) { e.preventDefault(); sendPrompt(); }
+  });
+
+  // ── Event rendering ─────────────────────────────────────────────────────────
+  const LARGE_STRING_THRESHOLD = 120;
+
+  /**
+   * Prepend a rendered event card to the feed (most-recent-first).
+   */
+  function prependEvent(data) {
+    const card = renderEventCard(data);
+    feed.insertBefore(card, feed.firstChild);
+  }
+
+  /**
+   * Build a <details class="event-card"> element for one event object.
+   */
+  function renderEventCard(data) {
+    const eventType = data._eventType ?? 'Unknown';
+    const timestamp = data._timestamp ? formatTs(data._timestamp) : '';
+
+    const card = document.createElement('details');
+    card.className = `event-card ${colorClass(eventType)}`;
+
+    // Auto-open important event types.
+    if (/AssistantMessage|SessionError|SendError|NetworkError|UserInput/.test(eventType)) {
+      card.open = true;
+    }
+
+    const summary = document.createElement('summary');
+    summary.innerHTML =
+      `<span class="event-type">${esc(eventType)}</span>` +
+      `<span class="event-ts">${esc(timestamp)}</span>`;
+    card.appendChild(summary);
+
+    const props = document.createElement('div');
+    props.className = 'props';
+
+    for (const [key, value] of Object.entries(data)) {
+      if (key === '_eventType' || key === '_timestamp') continue;
+      props.appendChild(renderProp(key, value));
+    }
+
+    card.appendChild(props);
+    return card;
+  }
+
+  /**
+   * Render a single key/value property row.
+   * Large or complex values use a nested <details>.
+   */
+  function renderProp(key, value) {
+    if (value !== null && typeof value === 'object') {
+      return renderNestedDetails(key, value);
+    }
+
+    if (typeof value === 'string' && value.length > LARGE_STRING_THRESHOLD) {
+      return renderLargeString(key, value);
+    }
+
+    // Simple scalar row.
+    const row = document.createElement('div');
+    row.className = 'prop-row';
+
+    const k = document.createElement('span');
+    k.className = 'prop-key';
+    k.textContent = key;
+    row.appendChild(k);
+
+    const v = document.createElement('span');
+    v.className = `prop-scalar ${scalarClass(value)}`;
+    v.textContent = value === null ? 'null' : String(value);
+    row.appendChild(v);
+
+    return row;
+  }
+
+  /**
+   * Render an object or array value inside a nested <details>.
+   */
+  function renderNestedDetails(key, value) {
+    const d = document.createElement('details');
+    d.className = 'nested-details';
+
+    const s = document.createElement('summary');
+    const preview = previewOf(value);
+    s.innerHTML =
+      `<span class="prop-key">${esc(key)}</span>` +
+      `<span class="preview">${esc(preview)}</span>`;
+    d.appendChild(s);
+
+    const content = document.createElement('div');
+    content.className = 'nested-content';
+
+    if (Array.isArray(value)) {
+      value.forEach((item, i) => content.appendChild(renderProp(String(i), item)));
+    } else {
+      for (const [k, v] of Object.entries(value)) {
+        content.appendChild(renderProp(k, v));
+      }
+    }
+
+    d.appendChild(content);
+    return d;
+  }
+
+  /**
+   * Render a long string inside a nested <details> with a <pre>.
+   */
+  function renderLargeString(key, value) {
+    const d = document.createElement('details');
+    d.className = 'nested-details';
+
+    const preview = value.slice(0, 60).replace(/\s+/g, ' ') + '…';
+    const s = document.createElement('summary');
+    s.innerHTML =
+      `<span class="prop-key">${esc(key)}</span>` +
+      `<span class="preview">${esc(preview)}</span>`;
+    d.appendChild(s);
+
+    const pre = document.createElement('pre');
+    pre.className = 'prop-value';
+    pre.textContent = value;
+    d.appendChild(pre);
+
+    return d;
+  }
+
+  // ── Helpers ─────────────────────────────────────────────────────────────────
+
+  function formatTs(iso) {
+    try {
+      return new Date(iso).toLocaleTimeString(undefined, { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 });
+    } catch { return iso; }
+  }
+
+  function esc(s) {
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function scalarClass(value) {
+    if (value === null) return 'prop-null';
+    if (typeof value === 'boolean') return 'prop-bool';
+    if (typeof value === 'number') return 'prop-number';
+    return 'prop-string';
+  }
+
+  function previewOf(value) {
+    if (Array.isArray(value)) return `[${value.length} items]`;
+    const keys = Object.keys(value);
+    if (keys.length === 0) return '{}';
+    return `{ ${keys.slice(0, 3).join(', ')}${keys.length > 3 ? ', …' : ''} }`;
+  }
+
+  function colorClass(eventType) {
+    if (/^Assistant/.test(eventType)) return 'type-assistant';
+    if (/^User/.test(eventType))      return 'type-user';
+    if (/^Tool/.test(eventType))      return 'type-tool';
+    if (/^Session/.test(eventType))   return 'type-session';
+    if (/Error|error/.test(eventType)) return 'type-error';
+    if (/^System/.test(eventType))    return 'type-system';
+    return '';
+  }
+</script>
+</body>
+</html>
