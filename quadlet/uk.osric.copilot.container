@@ -18,8 +18,8 @@ Wants=network-online.target
 Image=registry.osric.uk/uk.osric.copilot:latest
 # Persist the SQLite database outside the container
 Volume=%h/.local/share/uk.osric.copilot:/data:Z
-# Map host port 8080 to the container's Kestrel port
-PublishPort=8080:8080
+# Forward host port 5000 to the container's default Kestrel HTTP port
+PublishPort=5000:5000
 # Override the DB path and (optionally) the Copilot server URL
 Environment=DatabasePath=/data/copilot-sessions.db
 Environment=CopilotUrl=
