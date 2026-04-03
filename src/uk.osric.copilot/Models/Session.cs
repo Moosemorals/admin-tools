@@ -13,4 +13,3 @@ namespace uk.osric.copilot.Models {
         public string? WorkingDirectory { get; set; }
     }
 }
-

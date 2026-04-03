@@ -2,6 +2,10 @@ namespace uk.osric.copilot.Data {
     using Microsoft.EntityFrameworkCore;
     using uk.osric.copilot.Models;
 
+    /// <summary>
+    /// EF Core database context.  Kept <c>public</c> so that EF design-time tooling
+    /// (<c>dotnet ef migrations add</c>) can locate it via the registered factory.
+    /// </summary>
     public class CopilotDbContext(DbContextOptions<CopilotDbContext> options) : DbContext(options) {
         public DbSet<Session> Sessions { get; set; } = null!;
         public DbSet<SessionMessage> Messages { get; set; } = null!;

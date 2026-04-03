@@ -24,3 +24,7 @@ csharp_prefer_braces = true:error
 
 # using directives belong inside the namespace block.
 csharp_using_directive_placement = inside_namespace:error
+
+# Extension methods are the preferred way to group related operations on a type
+# (e.g. app.MapCopilotApi(), builder.AddCopilotServices()).
+# There is no formal Roslyn rule for this — it is a project convention.
