@@ -58,7 +58,6 @@ namespace uk.osric.copilot.Services {
                 if (message.Body is MultipartSigned signed) {
                     signatures = signed.Verify(ctx);
                 } else if (message.Body is ApplicationPkcs7Mime pkcs7) {
-                    MimeEntity? _ = null;
                     signatures = pkcs7.Verify(ctx, out _);
                 } else {
                     metrics.RecordDropped("unsigned");
@@ -192,12 +191,14 @@ namespace uk.osric.copilot.Services {
                     Directory.Exists(Path.Combine(dir, ".git")));
         }
 
+        private static readonly string[] _replyPrefixes = ["Re:", "Fwd:", "FW:"];
+
         private static string StripReplyPrefixes(string subject) {
             var result = subject.Trim();
             bool changed;
             do {
                 changed = false;
-                foreach (var prefix in new[] { "Re:", "Fwd:", "FW:" }) {
+                foreach (var prefix in _replyPrefixes) {
                     if (result.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) {
                         result = result[prefix.Length..].Trim();
                         changed = true;
