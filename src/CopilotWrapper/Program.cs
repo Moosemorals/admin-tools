@@ -45,7 +45,7 @@ app.MapPost("/send", async (CopilotService copilot, HttpContext ctx) =>
 {
     var prompt = await new StreamReader(ctx.Request.Body).ReadToEndAsync();
     if (string.IsNullOrWhiteSpace(prompt))
-        return Results.BadRequest("Prompt must not be empty.");
+        return Results.Ok(new { skipped = true });
 
     try
     {
