@@ -4,9 +4,13 @@ using CopilotWrapper.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var dbPath = builder.Configuration.GetValue<string>("DatabasePath") ?? "copilot-sessions.db";
+var dbPath     = builder.Configuration.GetValue<string>("DatabasePath") ?? "copilot-sessions.db";
+var copilotUrl = builder.Configuration.GetValue<string>("CopilotUrl");
 builder.Services.AddSingleton<SessionRepository>(_ => new SessionRepository(dbPath));
-builder.Services.AddSingleton<CopilotService>();
+builder.Services.AddSingleton<CopilotService>(sp =>
+    new CopilotService(sp.GetRequiredService<ILogger<CopilotService>>(),
+                       sp.GetRequiredService<SessionRepository>(),
+                       copilotUrl));
 builder.Services.AddHostedService(sp => sp.GetRequiredService<CopilotService>());
 
 var app = builder.Build();

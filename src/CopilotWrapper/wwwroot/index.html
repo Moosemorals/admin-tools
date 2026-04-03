@@ -41,7 +41,7 @@
     #status.error     { color: #f85149; }
 
     /* ── Sidebar ── */
-    #sidebar {
+    aside#sidebar {
       background: #161b22;
       border-right: 1px solid #30363d;
       display: flex;
@@ -118,7 +118,7 @@
     .session-delete-btn:hover { color: #f85149; background: #21262d; }
 
     /* ── Main area ── */
-    #main-area {
+    main#main-area {
       display: flex;
       flex-direction: column;
       overflow: hidden;
@@ -314,12 +314,12 @@
   <span id="status">connecting…</span>
 </header>
 
-<div id="sidebar">
+<aside id="sidebar">
   <button id="new-session-btn">+ New Session</button>
   <div id="session-list"></div>
-</div>
+</aside>
 
-<div id="main-area">
+<main id="main-area">
   <div id="feeds">
     <div id="no-session-msg">Select or create a session to begin</div>
   </div>
@@ -327,7 +327,7 @@
     <textarea id="prompt" placeholder="Select or create a session…" disabled></textarea>
     <button id="send-btn" disabled>Send</button>
   </div>
-</div>
+</main>
 
 <script>
   const statusEl      = document.getElementById('status');

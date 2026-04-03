@@ -18,11 +18,11 @@ public sealed class SessionRepository : IDisposable, IAsyncDisposable
         using var cmd = _connection.CreateCommand();
         cmd.CommandText = """
             CREATE TABLE IF NOT EXISTS sessions (
-                id              TEXT PRIMARY KEY,
-                title           TEXT NOT NULL,
-                created_at      TEXT NOT NULL,
-                last_active_at  TEXT NOT NULL
-            )
+                id              TEXT    NOT NULL PRIMARY KEY,
+                title           TEXT    NOT NULL,
+                created_at      TEXT    NOT NULL,
+                last_active_at  TEXT    NOT NULL
+            ) STRICT
             """;
         cmd.ExecuteNonQuery();
     }
@@ -40,8 +40,8 @@ public sealed class SessionRepository : IDisposable, IAsyncDisposable
             list.Add(new SessionRecord(
                 reader.GetString(0),
                 reader.GetString(1),
-                DateTimeOffset.Parse(reader.GetString(2)),
-                DateTimeOffset.Parse(reader.GetString(3))));
+                DateTimeOffset.ParseExact(reader.GetString(2), "O", null),
+                DateTimeOffset.ParseExact(reader.GetString(3), "O", null)));
         }
 
         return list;

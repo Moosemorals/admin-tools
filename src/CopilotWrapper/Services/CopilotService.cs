@@ -29,6 +29,7 @@ public sealed class CopilotService : IHostedService, IAsyncDisposable
 
     private readonly ILogger<CopilotService> _logger;
     private readonly SessionRepository _db;
+    private readonly string? _copilotUrl;
     private readonly JsonSerializerOptions _jsonOptions;
 
     private CopilotClient? _client;
@@ -41,10 +42,11 @@ public sealed class CopilotService : IHostedService, IAsyncDisposable
 
     // ── Constructor ───────────────────────────────────────────────────────────
 
-    public CopilotService(ILogger<CopilotService> logger, SessionRepository db)
+    public CopilotService(ILogger<CopilotService> logger, SessionRepository db, string? copilotUrl = null)
     {
         _logger = logger;
         _db = db;
+        _copilotUrl = copilotUrl;
         _jsonOptions = new JsonSerializerOptions
         {
             WriteIndented = false,
@@ -57,7 +59,10 @@ public sealed class CopilotService : IHostedService, IAsyncDisposable
     public async Task StartAsync(CancellationToken cancellationToken)
     {
         _logger.LogInformation("Starting Copilot client…");
-        _client = new CopilotClient();
+        var options = string.IsNullOrWhiteSpace(_copilotUrl)
+            ? new CopilotClientOptions()
+            : new CopilotClientOptions { CliUrl = _copilotUrl };
+        _client = new CopilotClient(options);
         await _client.StartAsync(cancellationToken);
 
         // Resume all sessions previously created in this UI.
