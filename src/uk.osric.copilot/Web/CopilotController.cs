@@ -11,7 +11,7 @@ namespace uk.osric.copilot.Web {
     /// <c>AddControllers()</c>) and discovered by <c>app.MapControllers()</c> in Program.
     /// </summary>
     [ApiController]
-    internal sealed class CopilotController(
+    public sealed class CopilotController(
             CopilotService copilot,
             SseBroadcaster broadcaster,
             IConfiguration config) : ControllerBase {

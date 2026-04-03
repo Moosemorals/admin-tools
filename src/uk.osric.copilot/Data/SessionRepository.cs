@@ -7,7 +7,7 @@ namespace uk.osric.copilot.Data {
     /// Uses <see cref="IDbContextFactory{TContext}"/> to create a fresh <see cref="CopilotDbContext"/>
     /// per operation, which is safe for concurrent access from multiple async callers.
     /// </summary>
-    internal sealed class SessionRepository(IDbContextFactory<CopilotDbContext> factory) {
+    public sealed class SessionRepository(IDbContextFactory<CopilotDbContext> factory) {
         /// <summary>Returns all sessions ordered by most-recently active.</summary>
         internal async Task<IReadOnlyList<Session>> GetAllAsync() {
             await using var db = await factory.CreateDbContextAsync();
