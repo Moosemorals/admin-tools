@@ -1,6 +1,8 @@
 namespace uk.osric.copilot.Web {
     using System.Reflection;
+    using System.Threading.Channels;
     using Microsoft.EntityFrameworkCore;
+    using MimeKit;
     using OpenTelemetry.Metrics;
     using OpenTelemetry.Resources;
     using OpenTelemetry.Trace;
@@ -32,6 +34,7 @@ namespace uk.osric.copilot.Web {
                     sp.GetRequiredService<ILogger<CopilotService>>(),
                     sp.GetRequiredService<SessionRepository>(),
                     sp.GetRequiredService<SseBroadcaster>(),
+                    sp.GetRequiredService<EmailMetrics>(),
                     copilotUrl));
 
             // Register as both the concrete type (for direct resolution) and the hosted service.
@@ -40,6 +43,14 @@ namespace uk.osric.copilot.Web {
             builder.Services.Configure<CopilotOptions>(builder.Configuration.GetSection("Copilot"));
             builder.Services.AddSingleton<CertificateService>();
             builder.Services.AddSingleton<EmailMetrics>();
+            builder.Services.AddSingleton<SmtpSenderService>();
+
+            var emailChannel = Channel.CreateUnbounded<MimeMessage>(new UnboundedChannelOptions { SingleReader = true });
+            builder.Services.AddSingleton(emailChannel.Writer);
+            builder.Services.AddSingleton(emailChannel.Reader);
+
+            builder.Services.AddHostedService<ImapListenerService>();
+            builder.Services.AddHostedService<EmailProcessorService>();
 
             // AddControllers brings in MVC routing and model binding.
             // JSON options are configured to match what the frontend expects: camelCase

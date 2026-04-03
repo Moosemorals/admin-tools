@@ -1,4 +1,5 @@
 namespace uk.osric.copilot.Services {
+    using System.Diagnostics;
     using System.Text.Json;
     using System.Text.Json.Nodes;
     using uk.osric.copilot.Data;
@@ -14,6 +15,7 @@ namespace uk.osric.copilot.Services {
             ILogger<CopilotService> logger,
             SessionRepository db,
             SseBroadcaster broadcaster,
+            EmailMetrics metrics,
             string? copilotUrl = null) : IHostedService, IAsyncDisposable {
 
         // ── Per-session state ─────────────────────────────────────────────────
@@ -26,6 +28,8 @@ namespace uk.osric.copilot.Services {
             public Dictionary<string, TaskCompletionSource<UserInputResponse>> PendingInputs { get; } = new();
             public Lock PendingInputsLock { get; } = new();
         }
+
+        private static readonly ActivitySource _activitySource = new("uk.osric.copilot");
 
         // ── Fields ────────────────────────────────────────────────────────────
 
@@ -118,6 +122,8 @@ namespace uk.osric.copilot.Services {
             await db.UpsertAsync(record);
             RegisterSession(sessionId, session);
 
+            metrics.IncrementSessionsTotal();
+            metrics.IncrementSessionsActive();
             logger.LogInformation("Created session {Id}.", sessionId);
             // SessionCreated drives sidebar insertion on the client — not persisted as a message
             // because it is not part of the session's conversation history.
@@ -162,6 +168,8 @@ namespace uk.osric.copilot.Services {
         /// The message is stored first so the history is consistent even if the send fails.
         /// </summary>
         internal async Task<string> SendAsync(string sessionId, string prompt) {
+            using var activity = _activitySource.StartActivity("copilot.send");
+            activity?.SetTag("session.id", sessionId);
             var state = GetState(sessionId);
             await StoreAndBroadcastAsync("UserMessage", new { prompt }, sessionId: sessionId);
             var msgId = await state.Session.SendAsync(new MessageOptions { Prompt = prompt });
@@ -187,6 +195,7 @@ namespace uk.osric.copilot.Services {
             }
 
             await db.DeleteAsync(sessionId);
+            metrics.DecrementSessionsActive();
             logger.LogInformation("Deleted session.");
         }
 
