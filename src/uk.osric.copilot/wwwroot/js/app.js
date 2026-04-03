@@ -149,14 +149,14 @@ async function sendPrompt() {
       const msg = await res.text();
       appendToFeed(sessionId, renderEventCard({
         _eventType: 'SendError', _timestamp: new Date().toISOString(), message: msg,
-      }));
+      }), undefined);
     } else {
       promptEl.value = '';
     }
   } catch (err) {
     appendToFeed(sessionId, renderEventCard({
       _eventType: 'NetworkError', _timestamp: new Date().toISOString(), error: String(err),
-    }));
+    }), undefined);
   } finally {
     sendBtn.disabled  = false;
     promptEl.disabled = false;

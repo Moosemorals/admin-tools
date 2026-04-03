@@ -9,8 +9,8 @@ namespace uk.osric.copilot.Migrations {
     using uk.osric.copilot.Data;
 
     [DbContext(typeof(CopilotDbContext))]
-    [Migration("20260403105750_InitialCreate")]
-    partial class InitialCreate {
+    [Migration("20260403113034_AddMessages")]
+    partial class AddMessages {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder) {
 #pragma warning disable 612, 618
@@ -44,9 +44,41 @@ namespace uk.osric.copilot.Migrations {
 
                 b.ToTable("sessions", (string)null);
             });
+
+            modelBuilder.Entity("uk.osric.copilot.Models.SessionMessage", b => {
+                b.Property<long>("Id")
+                    .ValueGeneratedOnAdd()
+                    .HasColumnType("INTEGER")
+                    .HasColumnName("id");
+
+                b.Property<string>("CreatedAt")
+                    .IsRequired()
+                    .HasColumnType("TEXT")
+                    .HasColumnName("created_at");
+
+                b.Property<string>("EventType")
+                    .IsRequired()
+                    .HasColumnType("TEXT")
+                    .HasColumnName("event_type");
+
+                b.Property<string>("Payload")
+                    .IsRequired()
+                    .HasColumnType("TEXT")
+                    .HasColumnName("payload");
+
+                b.Property<string>("SessionId")
+                    .IsRequired()
+                    .HasColumnType("TEXT")
+                    .HasColumnName("session_id");
+
+                b.HasKey("Id");
+
+                b.HasIndex("SessionId")
+                    .HasDatabaseName("IX_messages_session_id");
+
+                b.ToTable("messages", (string)null);
+            });
 #pragma warning restore 612, 618
         }
     }
 }
-
-        /// <inheritdoc />

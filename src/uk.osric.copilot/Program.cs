@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Microsoft.EntityFrameworkCore;
 using uk.osric.copilot.Data;
 using uk.osric.copilot.Services;
@@ -14,10 +15,12 @@ builder.Services.AddDbContextFactory<CopilotDbContext>(opts =>
 
 // ── Application services ──────────────────────────────────────────────────────
 var copilotUrl = builder.Configuration.GetValue<string>("CopilotUrl");
+builder.Services.AddSingleton<SseBroadcaster>();
 builder.Services.AddSingleton<SessionRepository>();
 builder.Services.AddSingleton<CopilotService>(sp =>
     new CopilotService(sp.GetRequiredService<ILogger<CopilotService>>(),
                        sp.GetRequiredService<SessionRepository>(),
+                       sp.GetRequiredService<SseBroadcaster>(),
                        copilotUrl));
 builder.Services.AddHostedService(sp => sp.GetRequiredService<CopilotService>());
 
@@ -32,8 +35,15 @@ await migrationDb.Database.MigrateAsync();
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
-// ── SSE stream ──────────────────────────────────────────────────────────────
-app.MapGet("/events", async (CopilotService copilot, HttpContext ctx, CancellationToken ct) => {
+// ── SSE stream ────────────────────────────────────────────────────────────────
+// Supports the SSE Last-Event-ID reconnect protocol: on reconnect the client
+// sends the id of the last event it received, and we replay everything after it
+// before draining the live channel.
+app.MapGet("/events", async (
+        SseBroadcaster broadcaster,
+        CopilotService copilot,
+        HttpContext ctx,
+        CancellationToken ct) => {
     ctx.Response.Headers.ContentType = "text/event-stream";
     ctx.Response.Headers.CacheControl = "no-cache";
     ctx.Response.Headers.Connection = "keep-alive";
@@ -41,16 +51,37 @@ app.MapGet("/events", async (CopilotService copilot, HttpContext ctx, Cancellati
 
     await ctx.Response.Body.FlushAsync(ct);
 
-    var reader = copilot.Subscribe();
+    // Subscribe FIRST so no live events are lost during the replay window.
+    var reader = broadcaster.Subscribe();
+    long lastSentId = 0;
+
     try {
-        await foreach (var json in reader.ReadAllAsync(ct)) {
-            await ctx.Response.WriteAsync($"data: {json}\n\n", ct);
+        // Replay any missed events if the client supplied Last-Event-ID.
+        var lastEventIdStr = ctx.Request.Headers["Last-Event-ID"].FirstOrDefault();
+        if (long.TryParse(lastEventIdStr, out var afterId) && afterId > 0) {
+            var missed = await copilot.GetEventsAfterAsync(afterId);
+            foreach (var (id, json) in missed) {
+                await ctx.Response.WriteAsync($"id: {id}\ndata: {json}\n\n", ct);
+                lastSentId = id;
+            }
+            await ctx.Response.Body.FlushAsync(ct);
+        }
+
+        // Drain the live channel, skipping anything already sent in the replay.
+        await foreach (var msg in reader.ReadAllAsync(ct)) {
+            if (msg.Id.HasValue && msg.Id.Value <= lastSentId) {
+                continue; // already replayed
+            }
+            if (msg.Id.HasValue) {
+                await ctx.Response.WriteAsync($"id: {msg.Id}\n", ct);
+            }
+            await ctx.Response.WriteAsync($"data: {msg.Json}\n\n", ct);
             await ctx.Response.Body.FlushAsync(ct);
         }
     } catch (OperationCanceledException) {
         // Client disconnected – normal exit.
     } finally {
-        copilot.Unsubscribe(reader);
+        broadcaster.Unsubscribe(reader);
     }
 });
 
@@ -111,14 +142,17 @@ app.MapPost("/sessions", async (CopilotService copilot, HttpContext ctx) => {
 });
 
 // ── Session message history ───────────────────────────────────────────────────
-app.MapGet("/sessions/{sessionId}/messages", async (CopilotService copilot, string sessionId) => {
-    try {
-        var messages = await copilot.GetMessagesJsonAsync(sessionId);
-        return Results.Ok(messages);
-    } catch (KeyNotFoundException) {
-        return Results.NotFound();
-    }
-});
+// Accepts an optional ?afterId=N query parameter so the client can fetch only
+// messages it has not yet seen (used on page-reload reconnect).
+app.MapGet("/sessions/{sessionId}/messages",
+    async (CopilotService copilot, string sessionId, long afterId = 0) => {
+        try {
+            var messages = await copilot.GetMessagesJsonAsync(sessionId, afterId);
+            return Results.Ok(messages);
+        } catch (KeyNotFoundException) {
+            return Results.NotFound();
+        }
+    });
 
 // ── Send a prompt to a session ────────────────────────────────────────────────
 app.MapPost("/sessions/{sessionId}/send",
@@ -277,4 +311,3 @@ static async Task StampPreEfDatabaseAsync(CopilotDbContext db) {
 // ── Request models ─────────────────────────────────────────────────────────────
 internal record UserInputReply(string RequestId, string? Answer, bool WasFreeform);
 internal record CreateSessionRequest(string? WorkingDirectory);
-

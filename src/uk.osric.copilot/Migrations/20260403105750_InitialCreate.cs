@@ -1,8 +1,8 @@
-using Microsoft.EntityFrameworkCore.Migrations;
-
 #nullable disable
 
 namespace uk.osric.copilot.Migrations {
+    using Microsoft.EntityFrameworkCore.Migrations;
+
     /// <inheritdoc />
     public partial class InitialCreate : Migration {
         /// <inheritdoc />

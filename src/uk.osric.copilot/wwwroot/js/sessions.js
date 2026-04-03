@@ -34,6 +34,13 @@ const loadedHistory = new Set();
  */
 const unseenCounts = new Map();
 
+/**
+ * Tracks message IDs already rendered per session to avoid duplicates that can
+ * arise when a live SSE event arrives during the history-loading window.
+ * @type {Map<string, Set<number>>}
+ */
+const renderedIds = new Map();
+
 // ── Scroll helpers ────────────────────────────────────────────────────────────
 
 function isNearBottom(el, threshold = 80) {
@@ -56,10 +63,27 @@ function updateScrollIndicator() {
 
 newMsgsEl.addEventListener('click', () => {
   const feed = activeSessionId ? feedElements.get(activeSessionId) : null;
-  if (feed) scrollToBottom(feed);
-  if (activeSessionId) unseenCounts.delete(activeSessionId);
+  if (feed) {
+    scrollToBottom(feed);
+  }
+  if (activeSessionId) {
+    unseenCounts.delete(activeSessionId);
+  }
   updateScrollIndicator();
 });
+
+// ── ID-based deduplication ────────────────────────────────────────────────────
+
+function isRendered(sessionId, id) {
+  return renderedIds.get(sessionId)?.has(id) ?? false;
+}
+
+function markRendered(sessionId, id) {
+  if (!renderedIds.has(sessionId)) {
+    renderedIds.set(sessionId, new Set());
+  }
+  renderedIds.get(sessionId).add(id);
+}
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
@@ -71,13 +95,24 @@ export function getActiveSessionId() {
 /**
  * Appends a rendered event card to the named session's feed.
  * Handles smart-scroll and the new-messages indicator automatically.
+ * If `messageId` is provided, duplicate renders are silently skipped.
  *
  * @param {string}      sessionId
- * @param {HTMLElement} card  - A rendered element (e.g. from renderEventCard).
+ * @param {HTMLElement} card       - A rendered element (e.g. from renderEventCard).
+ * @param {number}      [messageId] - The `_id` of the event, if available.
  */
-export function appendToFeed(sessionId, card) {
+export function appendToFeed(sessionId, card, messageId) {
+  if (messageId !== undefined && messageId !== null) {
+    if (isRendered(sessionId, messageId)) {
+      return; // already rendered via history load or a previous SSE event
+    }
+    markRendered(sessionId, messageId);
+  }
+
   const feed = feedElements.get(sessionId);
-  if (!feed) return;
+  if (!feed) {
+    return;
+  }
 
   feed.appendChild(card);
 
@@ -101,7 +136,9 @@ export function markNewSession(sessionId) {
 
 /** Creates a feed div for sessionId if one does not already exist. */
 export function ensureFeed(sessionId) {
-  if (feedElements.has(sessionId)) return;
+  if (feedElements.has(sessionId)) {
+    return;
+  }
 
   const div = document.createElement('div');
   div.className = 'session-feed';
@@ -120,10 +157,12 @@ export function ensureFeed(sessionId) {
  * Adds a session entry to the sidebar.
  * Skips silently if the session is already listed.
  *
- * @param {{ id: string, title: string, lastActiveAt: string }} record
+ * @param {{ id: string, title: string, lastActiveAt: string, workingDirectory?: string }} record
  */
 export function addSessionToSidebar(record) {
-  if (document.querySelector(`.session-item[data-session-id="${record.id}"]`)) return;
+  if (document.querySelector(`.session-item[data-session-id="${record.id}"]`)) {
+    return;
+  }
 
   const item = document.createElement('div');
   item.className = 'session-item';
@@ -149,7 +188,9 @@ export function addSessionToSidebar(record) {
   del.setAttribute('aria-label', 'Delete session');
   del.addEventListener('click', async (e) => {
     e.stopPropagation();
-    if (!confirm(`Delete session "${record.title}"?`)) return;
+    if (!confirm(`Delete session "${record.title}"?`)) {
+      return;
+    }
     try {
       await fetch(`/sessions/${record.id}`, { method: 'DELETE' });
       item.remove();
@@ -157,6 +198,7 @@ export function addSessionToSidebar(record) {
       feedElements.delete(record.id);
       loadedHistory.delete(record.id);
       unseenCounts.delete(record.id);
+      renderedIds.delete(record.id);
       if (activeSessionId === record.id) {
         activeSessionId = null;
         noSessionMsg.style.display = 'flex';
@@ -187,12 +229,19 @@ export function addSessionToSidebar(record) {
 
 /**
  * Switches the active session, lazily loading history on the first visit.
- * Scrolls the feed to the bottom after switching.
+ *
+ * On the first visit, the feed is cleared and history is fetched from the
+ * server starting at the last known message ID stored in localStorage.  This
+ * means a page reload will only re-fetch messages the client hasn't seen yet,
+ * and any SSE events that arrived before history loading are deduped by their
+ * `_id` so nothing appears twice.
  *
  * @param {string} sessionId
  */
 export async function switchToSession(sessionId) {
-  if (activeSessionId === sessionId) return;
+  if (activeSessionId === sessionId) {
+    return;
+  }
 
   if (activeSessionId && feedElements.has(activeSessionId)) {
     feedElements.get(activeSessionId).classList.remove('active');
@@ -208,7 +257,9 @@ export async function switchToSession(sessionId) {
     el.classList.toggle('active', el.dataset.sessionId === sessionId);
   });
   const item = document.querySelector(`.session-item[data-session-id="${sessionId}"]`);
-  if (item) item.querySelector('.unread-dot').hidden = true;
+  if (item) {
+    item.querySelector('.unread-dot').hidden = true;
+  }
 
   updateScrollIndicator();
 
@@ -218,10 +269,33 @@ export async function switchToSession(sessionId) {
 
   if (!loadedHistory.has(sessionId)) {
     loadedHistory.add(sessionId);
+
+    // Read the last message ID the client has seen for this session.  On the
+    // very first page load this will be 0, fetching the full history.
+    const afterId = Number(localStorage.getItem(`copilot.session.${sessionId}.lastId`) ?? 0);
+
     try {
-      const msgs = await fetch(`/sessions/${sessionId}/messages`).then(r => r.json());
+      const msgs = await fetch(`/sessions/${sessionId}/messages?afterId=${afterId}`)
+        .then(r => r.json());
+
       const feed = feedElements.get(sessionId);
+      // Clear pre-loaded SSE events: history will include them (with correct IDs)
+      // and the renderedIds dedup prevents any double-rendering.
+      feed.innerHTML = '';
+      renderedIds.delete(sessionId);
+
       for (const msg of msgs) {
+        if (msg._id !== undefined && msg._id !== null) {
+          if (isRendered(sessionId, msg._id)) {
+            continue;
+          }
+          markRendered(sessionId, msg._id);
+          // Also update localStorage so a subsequent page reload won't re-fetch.
+          const key = `copilot.session.${sessionId}.lastId`;
+          if (msg._id > Number(localStorage.getItem(key) ?? 0)) {
+            localStorage.setItem(key, String(msg._id));
+          }
+        }
         feed.appendChild(renderEventCard(msg));
       }
       scrollToBottom(feed);
@@ -231,6 +305,9 @@ export async function switchToSession(sessionId) {
   } else {
     // Already loaded; scroll to bottom so the latest messages are in view.
     const feed = feedElements.get(sessionId);
-    if (feed) scrollToBottom(feed);
+    if (feed) {
+      scrollToBottom(feed);
+    }
   }
 }
+

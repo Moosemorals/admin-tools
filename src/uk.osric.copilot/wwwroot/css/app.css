@@ -171,11 +171,13 @@ main#main-area {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  min-height: 0;
 }
 
 /* ── Feeds ─────────────────────────────────────────────────────────────────── */
 #feeds {
   flex: 1;
+  min-height: 0;  /* prevents flex item from overflowing its container */
   overflow: hidden;
   position: relative;
 }

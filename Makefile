@@ -37,7 +37,13 @@ publish: package
 	podman tag  $(IMAGE_NAME):$(IMAGE_TAG) $(IMAGE_NAME):$(DATE_TAG)
 	podman push $(IMAGE_NAME):$(DATE_TAG)
 
+## Reformat C# source using the project's .editorconfig rules.
+format:
+	dotnet format $(PROJECT)
+
 ## Start the GitHub Copilot CLI in server mode so the wrapper can connect to it.
 ## Set CopilotUrl in appsettings.json (or via environment) to the printed URL.
 start-copilot:
 	gh copilot server
+
+
