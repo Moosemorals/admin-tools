@@ -1,0 +1,487 @@
+/* ── Colour tokens ───────────────────────────────────────────────────────────
+   All palette values live here; the light-mode block below overrides them.
+   ─────────────────────────────────────────────────────────────────────────── */
+:root {
+  --bg:             #0d1117;
+  --surface:        #161b22;
+  --hover:          #21262d;
+  --border:         #30363d;
+  --text:           #c9d1d9;
+  --text-muted:     #8b949e;
+  --text-dim:       #6e7681;
+  --blue:           #58a6ff;
+  --green:          #3fb950;
+  --red:            #f85149;
+  --yellow:         #f2cc60;
+  --purple:         #d2a8ff;
+  --prop-val:       #a5d6ff;
+  --event-type:     #79c0ff;
+  --session-purple: #bc8cff;
+  --btn-bg:         #238636;
+  --btn-border:     #2ea043;
+  --btn-hover:      #2ea043;
+  --code-bg:        #0d1117;
+  --selected-bg:    #1f3d5e;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg:             #ffffff;
+    --surface:        #f6f8fa;
+    --hover:          #eaeef2;
+    --border:         #d0d7de;
+    --text:           #1f2328;
+    --text-muted:     #636c76;
+    --text-dim:       #8c959f;
+    --blue:           #0969da;
+    --green:          #1a7f37;
+    --red:            #d1242f;
+    --yellow:         #9a6700;
+    --purple:         #8250df;
+    --prop-val:       #0550ae;
+    --event-type:     #0969da;
+    --session-purple: #8250df;
+    --btn-bg:         #1f883d;
+    --btn-border:     #1a7f37;
+    --btn-hover:      #1a7f37;
+    --code-bg:        #f6f8fa;
+    --selected-bg:    #dbeafe;
+  }
+}
+
+/* ── Reset ─────────────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ── Layout ─────────────────────────────────────────────────────────────────── */
+body {
+  font-family: ui-monospace, "Cascadia Code", "Fira Code", monospace;
+  font-size: 13px;
+  background: var(--bg);
+  color: var(--text);
+  display: grid;
+  grid-template-rows: auto 1fr;
+  grid-template-columns: 220px 1fr;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+/* ── Header ─────────────────────────────────────────────────────────────────── */
+header {
+  grid-column: 1 / -1;
+  padding: 10px 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  h1 { font-size: 15px; color: var(--blue); flex: 1; }
+}
+
+#status {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--hover);
+  color: var(--text-muted);
+
+  &.connected { color: var(--green); }
+  &.error     { color: var(--red); }
+}
+
+/* ── Sidebar ─────────────────────────────────────────────────────────────────── */
+aside#sidebar {
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#new-session-btn {
+  margin: 10px 10px 6px;
+  background: var(--btn-bg);
+  color: #fff;
+  border: 1px solid var(--btn-border);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+
+  &:hover    { background: var(--btn-hover); }
+  &:disabled { opacity: .4; cursor: not-allowed; }
+}
+
+#session-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.session-item {
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  position: relative;
+
+  &:hover  { background: var(--hover); }
+  &.active { background: var(--hover); border-left: 2px solid var(--blue); }
+  &:hover .session-delete-btn { display: block; }
+
+  .session-delete-btn {
+    position: absolute;
+    right: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+    padding: 2px 4px;
+    border-radius: 4px;
+    display: none;
+
+    &:hover { color: var(--red); background: var(--hover); }
+  }
+}
+
+/* Both title and workdir need ellipsis truncation with the same right-padding to
+   avoid overlapping the absolutely-positioned delete button. */
+.session-title, .session-workdir {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-right: 18px;
+}
+.session-title   { color: var(--text); }
+.session-ts      { color: var(--text-muted); font-size: 10px; }
+.session-workdir { color: var(--text-dim); font-size: 10px; }
+
+.unread-dot {
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  color: var(--blue);
+  font-size: 10px;
+}
+
+/* ── Main area ─────────────────────────────────────────────────────────────── */
+main#main-area {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* ── Feeds ─────────────────────────────────────────────────────────────────── */
+#feeds {
+  flex: 1;
+  min-height: 0;  /* prevents flex item from overflowing its container */
+  overflow: hidden;
+  position: relative;
+
+  .session-feed {
+    position: absolute;
+    inset: 0;
+    overflow-y: auto;
+    padding: 10px 16px;
+    display: none;
+    flex-direction: column;
+    gap: 6px;
+
+    &.active { display: flex; }
+  }
+}
+
+/* ── New-messages indicator ─────────────────────────────────────────────────── */
+#new-msgs-indicator {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--blue);
+  color: #fff;
+  border: none;
+  border-radius: 16px;
+  padding: 5px 14px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  z-index: 10;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .35);
+  white-space: nowrap;
+
+  &[hidden] { display: none; }
+}
+
+/* ── Empty state ────────────────────────────────────────────────────────────── */
+#no-session-msg {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+/* ── Event card ─────────────────────────────────────────────────────────────── */
+.event-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  flex-shrink: 0;  /* prevent cards being squashed before the feed scrolls */
+
+  & > summary {
+    padding: 6px 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    list-style: none;
+    user-select: none;
+
+    &::-webkit-details-marker { display: none; }
+    &::before { content: "▶"; font-size: 9px; color: var(--text-muted); }
+
+    .event-type { font-weight: 700; color: var(--event-type); }
+    .event-ts   { color: var(--text-muted); font-size: 11px; margin-left: auto; }
+  }
+
+  &[open] > summary::before { content: "▼"; }
+
+  &.type-assistant { border-left: 3px solid var(--green); }
+  &.type-user      { border-left: 3px solid var(--blue); }
+  &.type-tool      { border-left: 3px solid var(--yellow); }
+  &.type-session   { border-left: 3px solid var(--session-purple); }
+  &.type-error     { border-left: 3px solid var(--red); }
+  &.type-system    { border-left: 3px solid var(--text-muted); }
+}
+
+/* ── Property rows ──────────────────────────────────────────────────────────── */
+.props { padding: 4px 10px 8px 20px; display: flex; flex-direction: column; gap: 3px; }
+
+.prop-row    { display: flex; align-items: baseline; gap: 6px; }
+.prop-key    { color: var(--purple); min-width: 140px; flex-shrink: 0; }
+.prop-scalar { color: var(--prop-val); white-space: pre-wrap; word-break: break-all; }
+.prop-null   { color: var(--text-dim); font-style: italic; }
+.prop-bool   { color: var(--event-type); }
+.prop-number { color: var(--yellow); }
+/* .prop-string inherits var(--prop-val) from .prop-scalar — no override needed */
+
+/* ── Nested details ─────────────────────────────────────────────────────────── */
+.nested-details {
+  width: 100%;
+
+  & > summary {
+    cursor: pointer;
+    color: var(--text-muted);
+    list-style: none;
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+
+    &::-webkit-details-marker { display: none; }
+    &::before { content: "▶"; font-size: 9px; }
+
+    .prop-key { color: var(--purple); }
+    .preview  { color: var(--text-muted); font-size: 11px; }
+  }
+
+  &[open] > summary::before { content: "▼"; }
+
+  .nested-content { padding: 3px 0 0 16px; display: flex; flex-direction: column; gap: 3px; }
+}
+
+pre.prop-value {
+  white-space: pre-wrap;
+  word-break: break-all;
+  color: var(--prop-val);
+  background: var(--code-bg);
+  border: 1px solid var(--hover);
+  border-radius: 4px;
+  padding: 6px 8px;
+  margin-top: 3px;
+  font-size: 12px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+/* ── Reply form ─────────────────────────────────────────────────────────────── */
+.reply-form {
+  padding: 8px 10px 10px 20px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  border-top: 1px solid var(--hover);
+  margin-top: 4px;
+
+  .reply-choices  { display: flex; flex-wrap: wrap; gap: 4px; }
+  .reply-confirmed { color: var(--green); font-size: 12px; }
+  .reply-error    { color: var(--red); font-size: 12px; }
+}
+
+.choice-btn {
+  background: var(--hover);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 3px 10px;
+  font: inherit;
+  cursor: pointer;
+
+  &:hover    { border-color: var(--blue); color: var(--blue); }
+  &.selected { background: var(--selected-bg); border-color: var(--blue); color: var(--prop-val); }
+}
+
+.reply-input {
+  flex: 1;
+  min-width: 180px;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font: inherit;
+
+  &:focus { outline: none; border-color: var(--blue); }
+}
+
+.reply-btn {
+  background: var(--btn-bg);
+  color: #fff;
+  border: 1px solid var(--btn-border);
+  border-radius: 4px;
+  padding: 4px 12px;
+  font: inherit;
+  cursor: pointer;
+
+  &:hover    { background: var(--btn-hover); }
+  &:disabled { opacity: .4; cursor: not-allowed; }
+}
+
+/* ── Input area ─────────────────────────────────────────────────────────────── */
+#input-area {
+  padding: 10px 16px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+#prompt {
+  flex: 1;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font: inherit;
+  resize: none;
+  height: 60px;
+
+  &:focus { outline: none; border-color: var(--blue); }
+}
+
+#input-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+#send-btn {
+  background: var(--btn-bg);
+  color: #fff;
+  border: 1px solid var(--btn-border);
+  border-radius: 6px;
+  padding: 0 18px;
+  font: inherit;
+  cursor: pointer;
+  height: 36px;
+  white-space: nowrap;
+
+  &:hover    { background: var(--btn-hover); }
+  &:disabled { opacity: .4; cursor: not-allowed; }
+}
+
+#send-hint {
+  font-size: 10px;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+/* ── Project-folder picker modal ────────────────────────────────────────────── */
+#project-folder-dialog {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0;
+  min-width: 340px;
+  max-width: 500px;
+  width: 90vw;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, .4);
+
+  &::backdrop { background: rgba(0, 0, 0, .5); }
+
+  .dialog-header {
+    padding: 14px 16px 10px;
+    border-bottom: 1px solid var(--border);
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .dialog-body { padding: 10px 8px; }
+
+  .folder-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    max-height: 320px;
+    overflow-y: auto;
+  }
+
+  /* Both folder-item and folder-none share padding, shape, and pointer cursor. */
+  .folder-item, .folder-none { padding: 8px 10px; border-radius: 6px; cursor: pointer; }
+  .folder-item { display: flex; flex-direction: column; gap: 2px; }
+  .folder-item-name { font-weight: 600; color: var(--text); }
+  .folder-item-path { font-size: 10px; color: var(--text-muted); }
+  .folder-none { color: var(--text-muted); font-style: italic; }
+  .folder-item:hover, .folder-none:hover { background: var(--hover); }
+  .folder-none:hover { color: var(--text); }
+
+  .dialog-footer {
+    padding: 8px 16px 12px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  .dialog-cancel-btn {
+    background: none;
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 5px 14px;
+    font: inherit;
+    cursor: pointer;
+
+    &:hover { border-color: var(--text-muted); color: var(--text); }
+  }
+}

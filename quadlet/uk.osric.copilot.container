@@ -1,0 +1,38 @@
+# Podman Quadlet container unit for uk.osric.copilot
+#
+# Install location (rootless, per-user):
+#   ~/.config/containers/systemd/uk.osric.copilot.container
+# Install location (system-wide):
+#   /etc/containers/systemd/uk.osric.copilot.container
+#
+# After installing, reload systemd and start:
+#   systemctl --user daemon-reload
+#   systemctl --user start uk.osric.copilot.service
+
+[Unit]
+Description=uk.osric.copilot — Copilot CLI Wrapper
+After=network-online.target
+Wants=network-online.target
+
+[Container]
+Image=registry.osric.uk/uk.osric.copilot:latest
+# Persist the SQLite database outside the container
+Volume=%h/.local/share/uk.osric.copilot:/data:Z
+# Forward host port 5000 to the container's ASP.NET HTTP port
+# ASPNETCORE_HTTP_PORTS overrides the in-container default (8080) so Kestrel
+# actually listens on 5000, matching the host-side of the port mapping.
+PublishPort=5000:5000
+# Override the DB path and (optionally) the Copilot server URL
+Environment=DatabasePath=/data/copilot-sessions.db
+Environment=CopilotUrl=
+Environment=ASPNETCORE_HTTP_PORTS=5000
+# Use host networking for Copilot CLI socket access (adjust if not needed)
+# Network=host
+AutoUpdate=registry
+
+[Service]
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=default.target
