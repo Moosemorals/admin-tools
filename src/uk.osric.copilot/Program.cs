@@ -13,6 +13,7 @@ namespace uk.osric.copilot.Web {
             app.UseDefaultFiles();
             app.UseStaticFiles();
             app.MapControllers();
+            app.MapPrometheusScrapingEndpoint();
             app.Run();
         }
     }
