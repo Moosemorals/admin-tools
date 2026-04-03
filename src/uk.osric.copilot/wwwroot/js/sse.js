@@ -1,3 +1,5 @@
+// @ts-check
+
 /**
  * sse.js — Server-Sent Events connection and event routing.
  *
@@ -26,6 +28,7 @@ import {
  * Opens the SSE stream and routes incoming events to the session UI.
  *
  * @param {HTMLElement} statusEl - The status badge element in the page header.
+ * @returns {void}
  */
 export function connectSSE(statusEl) {
   const es = new EventSource('/events');
@@ -51,6 +54,7 @@ export function connectSSE(statusEl) {
 
 // ── Internal ──────────────────────────────────────────────────────────────────
 
+/** @param {import('./render.js').SseEvent} data */
 function handleEvent(data) {
   // Persist the highest seen message ID per session so history can be fetched
   // incrementally after a page reload.

@@ -1,3 +1,5 @@
+// @ts-check
+
 /**
  * app.js — entry point.
  *
@@ -19,6 +21,7 @@ const folderList = document.getElementById('folder-list');
 const cancelBtn  = document.getElementById('pf-cancel-btn');
 
 // ── Initialise ────────────────────────────────────────────────────────────────
+/** @returns {Promise<void>} */
 async function init() {
   try {
     const sessions = await fetch('/sessions').then(r => r.json());
@@ -129,6 +132,7 @@ newSessBtn.addEventListener('click', async () => {
 });
 
 // ── Send prompt ───────────────────────────────────────────────────────────────
+/** @returns {Promise<void>} */
 async function sendPrompt() {
   const sessionId = getActiveSessionId();
   if (!sessionId) return;

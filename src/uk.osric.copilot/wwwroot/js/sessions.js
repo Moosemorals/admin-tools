@@ -1,3 +1,9 @@
+// @ts-check
+
+/**
+ * @typedef {{ id: string, title: string, lastActiveAt: string, workingDirectory?: string|null }} SessionRecord
+ */
+
 /**
  * sessions.js — session state, sidebar, feeds, and smart-scroll logic.
  *
@@ -43,10 +49,12 @@ const renderedIds = new Map();
 
 // ── Scroll helpers ────────────────────────────────────────────────────────────
 
+/** @param {HTMLElement} el @param {number} [threshold] @returns {boolean} */
 function isNearBottom(el, threshold = 80) {
   return el.scrollHeight - el.scrollTop - el.clientHeight <= threshold;
 }
 
+/** @param {HTMLElement} el */
 function scrollToBottom(el) {
   el.scrollTop = el.scrollHeight;
 }
@@ -74,10 +82,12 @@ newMsgsEl.addEventListener('click', () => {
 
 // ── ID-based deduplication ────────────────────────────────────────────────────
 
+/** @param {string} sessionId @param {number} id @returns {boolean} */
 function isRendered(sessionId, id) {
   return renderedIds.get(sessionId)?.has(id) ?? false;
 }
 
+/** @param {string} sessionId @param {number} id */
 function markRendered(sessionId, id) {
   if (!renderedIds.has(sessionId)) {
     renderedIds.set(sessionId, new Set());
@@ -87,7 +97,9 @@ function markRendered(sessionId, id) {
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
-/** Returns the currently active session ID (or null). */
+/** Returns the currently active session ID (or null).
+ * @returns {string|null}
+ */
 export function getActiveSessionId() {
   return activeSessionId;
 }
@@ -100,6 +112,7 @@ export function getActiveSessionId() {
  * @param {string}      sessionId
  * @param {HTMLElement} card       - A rendered element (e.g. from renderEventCard).
  * @param {number}      [messageId] - The `_id` of the event, if available.
+ * @returns {void}
  */
 export function appendToFeed(sessionId, card, messageId) {
   if (messageId !== undefined && messageId !== null) {
@@ -129,12 +142,15 @@ export function appendToFeed(sessionId, card, messageId) {
 /**
  * Marks a session as having no server-side history to load.
  * Call this for brand-new sessions created during this page session.
+ * @param {string} sessionId
  */
 export function markNewSession(sessionId) {
   loadedHistory.add(sessionId);
 }
 
-/** Creates a feed div for sessionId if one does not already exist. */
+/** Creates a feed div for sessionId if one does not already exist.
+ * @param {string} sessionId
+ */
 export function ensureFeed(sessionId) {
   if (feedElements.has(sessionId)) {
     return;
@@ -157,7 +173,7 @@ export function ensureFeed(sessionId) {
  * Adds a session entry to the sidebar.
  * Skips silently if the session is already listed.
  *
- * @param {{ id: string, title: string, lastActiveAt: string, workingDirectory?: string }} record
+ * @param {SessionRecord} record
  */
 export function addSessionToSidebar(record) {
   if (document.querySelector(`.session-item[data-session-id="${record.id}"]`)) {
@@ -237,6 +253,7 @@ export function addSessionToSidebar(record) {
  * `_id` so nothing appears twice.
  *
  * @param {string} sessionId
+ * @returns {Promise<void>}
  */
 export async function switchToSession(sessionId) {
   if (activeSessionId === sessionId) {

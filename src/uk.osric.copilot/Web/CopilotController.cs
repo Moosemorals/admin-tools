@@ -7,8 +7,8 @@ namespace uk.osric.copilot.Web {
 
     /// <summary>
     /// Single controller that exposes the full Copilot wrapper HTTP API.
-    /// Use <see cref="AppServiceExtensions.AddCopilotServices"/> and
-    /// <see cref="CopilotEndpoints.MapCopilotApi"/> to wire this up at startup.
+    /// Registered via <see cref="AppServiceExtensions.AddCopilotServices"/> (which calls
+    /// <c>AddControllers()</c>) and discovered by <c>app.MapControllers()</c> in Program.
     /// </summary>
     [ApiController]
     internal sealed class CopilotController(

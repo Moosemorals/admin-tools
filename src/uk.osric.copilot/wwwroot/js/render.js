@@ -1,3 +1,12 @@
+// @ts-check
+
+/**
+ * @typedef {{ _eventType?: string, _id?: number, _sessionId?: string,
+ *             _timestamp?: string, requestId?: string,
+ *             choices?: string[], allowFreeform?: boolean,
+ *             [key: string]: unknown }} SseEvent
+ */
+
 import { esc, formatTs, scalarClass, previewOf, colorClass } from './helpers.js';
 
 const LARGE_STRING_THRESHOLD = 120;
@@ -6,7 +15,7 @@ const LARGE_STRING_THRESHOLD = 120;
  * Renders a full event card (<details> element) for a single SSE event payload.
  * AssistantMessage, AgentMessage, error, and user-input events are expanded by default.
  *
- * @param {object} data - Parsed SSE event object (fields prefixed with _ are metadata).
+ * @param {SseEvent} data - Parsed SSE event object (fields prefixed with _ are metadata).
  * @returns {HTMLDetailsElement}
  */
 export function renderEventCard(data) {
@@ -43,6 +52,7 @@ export function renderEventCard(data) {
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
+/** @param {string} key @param {unknown} value @returns {HTMLElement} */
 function renderProp(key, value) {
   if (value !== null && typeof value === 'object') {
     return renderNestedDetails(key, value);
@@ -67,6 +77,7 @@ function renderProp(key, value) {
   return row;
 }
 
+/** @param {string} key @param {object} value @returns {HTMLDetailsElement} */
 function renderNestedDetails(key, value) {
   const d = document.createElement('details');
   d.className = 'nested-details';
@@ -90,6 +101,7 @@ function renderNestedDetails(key, value) {
   return d;
 }
 
+/** @param {string} key @param {string} value @returns {HTMLDetailsElement} */
 function renderLargeString(key, value) {
   const d = document.createElement('details');
   d.className = 'nested-details';
@@ -108,6 +120,7 @@ function renderLargeString(key, value) {
   return d;
 }
 
+/** @param {HTMLDetailsElement} card @param {SseEvent} data */
 function appendReplyForm(card, data) {
   const form = document.createElement('div');
   form.className = 'reply-form';

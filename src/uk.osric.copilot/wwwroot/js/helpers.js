@@ -1,4 +1,9 @@
-/** Escape a value for safe insertion into HTML attribute or text content. */
+// @ts-check
+
+/** Escape a value for safe insertion into HTML attribute or text content.
+ * @param {*} s
+ * @returns {string}
+ */
 export function esc(s) {
   return String(s)
     .replace(/&/g, '&amp;')
@@ -7,7 +12,10 @@ export function esc(s) {
     .replace(/"/g, '&quot;');
 }
 
-/** Format an ISO timestamp as HH:MM:SS.mmm using the browser locale. */
+/** Format an ISO timestamp as HH:MM:SS.mmm using the browser locale.
+ * @param {string} iso
+ * @returns {string}
+ */
 export function formatTs(iso) {
   try {
     return new Date(iso).toLocaleTimeString(undefined, {
@@ -19,7 +27,10 @@ export function formatTs(iso) {
   }
 }
 
-/** Express a timestamp as a human-readable relative string (e.g. "3m ago"). */
+/** Express a timestamp as a human-readable relative string (e.g. "3m ago").
+ * @param {string} iso
+ * @returns {string}
+ */
 export function relativeTime(iso) {
   const diff = Date.now() - new Date(iso).getTime();
   if (diff < 60_000)     return 'just now';
@@ -28,7 +39,10 @@ export function relativeTime(iso) {
   return `${Math.floor(diff / 86_400_000)}d ago`;
 }
 
-/** CSS utility class for the scalar type of a JSON value. */
+/** CSS utility class for the scalar type of a JSON value.
+ * @param {unknown} value
+ * @returns {string}
+ */
 export function scalarClass(value) {
   if (value === null)             return 'prop-null';
   if (typeof value === 'boolean') return 'prop-bool';
@@ -36,7 +50,10 @@ export function scalarClass(value) {
   return 'prop-string';
 }
 
-/** One-line preview string for an object or array. */
+/** One-line preview string for an object or array.
+ * @param {object} value
+ * @returns {string}
+ */
 export function previewOf(value) {
   if (Array.isArray(value)) return `[${value.length} items]`;
   const keys = Object.keys(value);
@@ -44,7 +61,10 @@ export function previewOf(value) {
   return `{ ${keys.slice(0, 3).join(', ')}${keys.length > 3 ? ', …' : ''} }`;
 }
 
-/** CSS class for the coloured left border of an event card. */
+/** CSS class for the coloured left border of an event card.
+ * @param {string} eventType
+ * @returns {string}
+ */
 export function colorClass(eventType) {
   if (/^Assistant|^Agent/.test(eventType)) return 'type-assistant';
   if (/^User/.test(eventType))             return 'type-user';

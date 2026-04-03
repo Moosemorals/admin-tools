@@ -12,8 +12,9 @@ namespace uk.osric.copilot.Web {
             await app.InitialiseDatabaseAsync();
             app.UseDefaultFiles();
             app.UseStaticFiles();
-            app.MapCopilotApi();
+            app.MapControllers();
             app.Run();
         }
     }
 }
+
