@@ -89,7 +89,7 @@ namespace uk.osric.copilot.Services {
             var certRecord = await certificates.ValidateCertificateAsync(senderCert);
             if (certRecord is null) {
                 logger.LogInformation("Dropping message {Id}: unknown or invalid certificate.", message.MessageId);
-                metrics.RecordDropped("unknown_certificate");
+                metrics.RecordDropped("unknown_signature");
                 return;
             }
 
@@ -193,7 +193,7 @@ namespace uk.osric.copilot.Services {
 
         private static readonly string[] _replyPrefixes = ["Re:", "Fwd:", "FW:"];
 
-        private static string StripReplyPrefixes(string subject) {
+        internal static string StripReplyPrefixes(string subject) {
             var result = subject.Trim();
             bool changed;
             do {
