@@ -16,7 +16,7 @@ namespace uk.osric.copilot.Services {
     /// Each SSE connection subscribes to receive a private channel reader; the broadcaster
     /// pushes every message to every connected subscriber concurrently.
     /// </summary>
-    internal sealed class SseBroadcaster(ILogger<SseBroadcaster> logger) {
+    public sealed class SseBroadcaster(ILogger<SseBroadcaster> logger) {
         private readonly List<Channel<SseMessage>> _subscribers = [];
         private readonly Lock _lock = new();
 

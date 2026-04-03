@@ -10,7 +10,7 @@ namespace uk.osric.copilot.Services {
     /// All Copilot SDK events, user prompts, and input replies are persisted to the database
     /// and broadcast to SSE subscribers via <see cref="SseBroadcaster"/>.
     /// </summary>
-    internal sealed class CopilotService(
+    public sealed class CopilotService(
             ILogger<CopilotService> logger,
             SessionRepository db,
             SseBroadcaster broadcaster,
