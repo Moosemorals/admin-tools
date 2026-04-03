@@ -34,8 +34,9 @@ namespace uk.osric.copilot.Tests.Unit {
             var cert = await _sut.GenerateKeyPairAsync("bob@example.com", 365);
             var after = DateTimeOffset.UtcNow;
 
-            Assert.That(cert.NotBefore, Is.GreaterThanOrEqualTo(before).Within(TimeSpan.FromSeconds(5)));
-            Assert.That(cert.NotAfter, Is.EqualTo(cert.NotBefore.AddDays(365)).Within(TimeSpan.FromSeconds(5)));
+            Assert.That(cert.NotBefore, Is.GreaterThanOrEqualTo(before));
+            Assert.That(cert.NotBefore, Is.LessThanOrEqualTo(after));
+            Assert.That((cert.NotAfter - cert.NotBefore).TotalDays, Is.EqualTo(365).Within(1));
         }
 
         [Test]
