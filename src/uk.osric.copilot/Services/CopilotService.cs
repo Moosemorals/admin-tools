@@ -71,7 +71,7 @@ public sealed class CopilotService : IHostedService, IAsyncDisposable
         {
             try
             {
-                await ResumeSessionCoreAsync(record.Id, cancellationToken);
+                await ResumeSessionCoreAsync(record.Id, record.WorkingDirectory, cancellationToken);
                 _logger.LogInformation("Resumed session {Id}.", record.Id);
             }
             catch (Exception ex)
@@ -110,7 +110,7 @@ public sealed class CopilotService : IHostedService, IAsyncDisposable
     // ── Session management ────────────────────────────────────────────────────
 
     /// <summary>Creates a new Copilot session, persists it, and broadcasts <c>SessionCreated</c>.</summary>
-    public async Task<SessionRecord> CreateSessionAsync()
+    public async Task<Session> CreateSessionAsync(string? workingDirectory = null)
     {
         if (_client is null)
             throw new InvalidOperationException("Copilot client is not running.");
@@ -121,11 +121,19 @@ public sealed class CopilotService : IHostedService, IAsyncDisposable
             SessionId = sessionId,
             OnPermissionRequest = PermissionHandler.ApproveAll,
             OnUserInputRequest = BuildUserInputHandler(sessionId),
+            WorkingDirectory = workingDirectory,
         });
 
         var now = DateTimeOffset.UtcNow;
         var title = $"Session {now:HH:mm:ss}";
-        var record = new SessionRecord(sessionId, title, now, now);
+        var record = new Session
+        {
+            Id = sessionId,
+            Title = title,
+            CreatedAt = now,
+            LastActiveAt = now,
+            WorkingDirectory = workingDirectory,
+        };
 
         await _db.UpsertAsync(record);
         RegisterSession(sessionId, session);
@@ -137,12 +145,13 @@ public sealed class CopilotService : IHostedService, IAsyncDisposable
             title,
             createdAt = record.CreatedAt,
             lastActiveAt = record.LastActiveAt,
+            workingDirectory,
         }));
 
         return record;
     }
 
-    public Task<IReadOnlyList<SessionRecord>> ListSessionsAsync() => _db.GetAllAsync();
+    public Task<IReadOnlyList<Session>> ListSessionsAsync() => _db.GetAllAsync();
 
     /// <summary>
     /// Returns the complete event history for a session, serialised in the same
@@ -246,12 +255,13 @@ public sealed class CopilotService : IHostedService, IAsyncDisposable
 
     // ── Internals ─────────────────────────────────────────────────────────────
 
-    private async Task ResumeSessionCoreAsync(string sessionId, CancellationToken cancellationToken)
+    private async Task ResumeSessionCoreAsync(string sessionId, string? workingDirectory, CancellationToken cancellationToken)
     {
         var session = await _client!.ResumeSessionAsync(sessionId, new ResumeSessionConfig
         {
             OnPermissionRequest = PermissionHandler.ApproveAll,
             OnUserInputRequest = BuildUserInputHandler(sessionId),
+            WorkingDirectory = workingDirectory,
         }, cancellationToken);
 
         RegisterSession(sessionId, session);

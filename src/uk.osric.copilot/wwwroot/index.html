@@ -32,6 +32,17 @@
   </div>
 </main>
 
+<!-- Project folder picker (shown when creating a new session) -->
+<dialog id="project-folder-dialog" aria-labelledby="pf-dialog-title">
+  <div class="dialog-header" id="pf-dialog-title">Choose a project folder</div>
+  <div class="dialog-body">
+    <ul class="folder-list" id="folder-list" role="listbox" aria-label="Project folders"></ul>
+  </div>
+  <div class="dialog-footer">
+    <button class="dialog-cancel-btn" id="pf-cancel-btn">Cancel</button>
+  </div>
+</dialog>
+
 <script type="module" src="/js/app.js"></script>
 </body>
 </html>

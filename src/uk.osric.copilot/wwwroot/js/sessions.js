@@ -171,6 +171,13 @@ export function addSessionToSidebar(record) {
   });
 
   item.appendChild(title);
+  if (record.workingDirectory) {
+    const wd = document.createElement('span');
+    wd.className   = 'session-workdir';
+    wd.textContent = '📁 ' + record.workingDirectory.split('/').pop();
+    wd.title       = record.workingDirectory;
+    item.appendChild(wd);
+  }
   item.appendChild(ts);
   item.appendChild(dot);
   item.appendChild(del);

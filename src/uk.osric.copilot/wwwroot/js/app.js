@@ -2,18 +2,21 @@
  * app.js — entry point.
  *
  * Wires up the page: loads existing sessions, opens the SSE stream, and handles
- * the prompt-send flow.
+ * the prompt-send flow and project folder picker.
  */
 
 import { addSessionToSidebar, ensureFeed, switchToSession, appendToFeed, getActiveSessionId } from './sessions.js';
-import { connectSSE }    from './sse.js';
+import { connectSSE }      from './sse.js';
 import { renderEventCard } from './render.js';
 
 // ── DOM refs ──────────────────────────────────────────────────────────────────
-const statusEl    = document.getElementById('status');
-const newSessBtn  = document.getElementById('new-session-btn');
-const promptEl    = document.getElementById('prompt');
-const sendBtn     = document.getElementById('send-btn');
+const statusEl   = document.getElementById('status');
+const newSessBtn = document.getElementById('new-session-btn');
+const promptEl   = document.getElementById('prompt');
+const sendBtn    = document.getElementById('send-btn');
+const dialog     = /** @type {HTMLDialogElement} */ (document.getElementById('project-folder-dialog'));
+const folderList = document.getElementById('folder-list');
+const cancelBtn  = document.getElementById('pf-cancel-btn');
 
 // ── Initialise ────────────────────────────────────────────────────────────────
 async function init() {
@@ -34,11 +37,88 @@ async function init() {
 
 init();
 
+// ── Project folder picker ─────────────────────────────────────────────────────
+
+/**
+ * Shows the project folder picker dialog and resolves with the chosen path
+ * (or null if the user picks "No project folder" or cancels).
+ *
+ * @returns {Promise<string|null>}
+ */
+async function pickProjectFolder() {
+  let folders = [];
+  try {
+    folders = await fetch('/project-folders').then(r => r.json());
+  } catch (err) {
+    console.error('Failed to load project folders:', err);
+  }
+
+  folderList.innerHTML = '';
+
+  // "No project folder" option.
+  const noneItem = document.createElement('li');
+  noneItem.className = 'folder-none';
+  noneItem.textContent = 'No project folder';
+  noneItem.setAttribute('role', 'option');
+  folderList.appendChild(noneItem);
+
+  for (const f of folders) {
+    const li = document.createElement('li');
+    li.className = 'folder-item';
+    li.setAttribute('role', 'option');
+
+    const name = document.createElement('span');
+    name.className   = 'folder-item-name';
+    name.textContent = f.name;
+
+    const path = document.createElement('span');
+    path.className   = 'folder-item-path';
+    path.textContent = f.path;
+
+    li.appendChild(name);
+    li.appendChild(path);
+    folderList.appendChild(li);
+  }
+
+  return new Promise(resolve => {
+    function cleanup() {
+      dialog.removeEventListener('cancel', onCancel);
+      folderList.removeEventListener('click', onFolderClick);
+      cancelBtn.removeEventListener('click', onCancel);
+      dialog.close();
+    }
+
+    function onCancel() { cleanup(); resolve(null); }
+
+    function onFolderClick(e) {
+      const noneEl = e.target.closest('.folder-none');
+      if (noneEl) { cleanup(); resolve(null); return; }
+      const item = e.target.closest('.folder-item');
+      if (!item) return;
+      const chosen = item.querySelector('.folder-item-path').textContent;
+      cleanup();
+      resolve(chosen);
+    }
+
+    dialog.addEventListener('cancel', onCancel);
+    cancelBtn.addEventListener('click', onCancel);
+    folderList.addEventListener('click', onFolderClick);
+    dialog.showModal();
+  });
+}
+
 // ── New-session button ────────────────────────────────────────────────────────
 newSessBtn.addEventListener('click', async () => {
   newSessBtn.disabled = true;
   try {
-    const res = await fetch('/sessions', { method: 'POST' });
+    const workingDirectory = await pickProjectFolder();
+    // null means user cancelled or chose "no folder"
+    const body = workingDirectory ? JSON.stringify({ workingDirectory }) : null;
+    const res = await fetch('/sessions', {
+      method: 'POST',
+      headers: body ? { 'Content-Type': 'application/json' } : {},
+      body,
+    });
     if (!res.ok) console.error('Failed to create session:', await res.text());
     // The SessionCreated SSE event handles sidebar insertion and switching.
   } catch (err) {

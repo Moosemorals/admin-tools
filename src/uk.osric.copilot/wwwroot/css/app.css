@@ -389,3 +389,81 @@ pre.prop-value {
 .event-card.type-session   { border-left: 3px solid var(--session-purple); }
 .event-card.type-error     { border-left: 3px solid var(--red); }
 .event-card.type-system    { border-left: 3px solid var(--text-muted); }
+
+/* ── Session working directory tag ──────────────────────────────────────────── */
+.session-workdir {
+  color: var(--text-dim);
+  font-size: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-right: 18px;
+}
+
+/* ── Project-folder picker modal ────────────────────────────────────────────── */
+#project-folder-dialog {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0;
+  min-width: 340px;
+  max-width: 500px;
+  width: 90vw;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, .4);
+}
+#project-folder-dialog::backdrop {
+  background: rgba(0, 0, 0, .5);
+}
+.dialog-header {
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+.dialog-body { padding: 10px 8px; }
+.folder-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.folder-item {
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.folder-item:hover { background: var(--hover); }
+.folder-item-name { font-weight: 600; color: var(--text); }
+.folder-item-path { font-size: 10px; color: var(--text-muted); }
+.folder-none {
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-style: italic;
+}
+.folder-none:hover { background: var(--hover); color: var(--text); }
+.dialog-footer {
+  padding: 8px 16px 12px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.dialog-cancel-btn {
+  background: none;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 5px 14px;
+  font: inherit;
+  cursor: pointer;
+}
+.dialog-cancel-btn:hover { border-color: var(--text-muted); color: var(--text); }
