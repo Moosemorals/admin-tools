@@ -45,15 +45,14 @@ public sealed class CopilotService : IHostedService, IAsyncDisposable
             OnPermissionRequest = PermissionHandler.ApproveAll,
             OnUserInputRequest = async (request, _) =>
             {
-                // Surface user-input requests as a synthetic event so the front-end can see them.
-                BroadcastRaw(BuildSyntheticEvent("UserInputRequested", new
+                        // Surface user-input requests as a synthetic event so the front-end can see them.
+                BroadcastRaw(BuildEventJson("UserInputRequested", new
                 {
                     question = request.Question,
                     choices = request.Choices,
                     allowFreeform = request.AllowFreeform,
                 }));
                 // Auto-respond with an empty string so the session is not blocked.
-                await Task.CompletedTask;
                 return new UserInputResponse { Answer = string.Empty, WasFreeform = true };
             },
         });
@@ -63,7 +62,7 @@ public sealed class CopilotService : IHostedService, IAsyncDisposable
 
         _logger.LogInformation("Copilot session ready (id={SessionId}).", _session.SessionId);
 
-        BroadcastRaw(BuildSyntheticEvent("ServiceReady", new { sessionId = _session.SessionId }));
+        BroadcastRaw(BuildEventJson("ServiceReady", new { sessionId = _session.SessionId }));
     }
 
     public async Task StopAsync(CancellationToken cancellationToken)
@@ -115,13 +114,7 @@ public sealed class CopilotService : IHostedService, IAsyncDisposable
         try
         {
             // Serialize using the concrete runtime type so all properties are included.
-            var node = JsonSerializer.SerializeToNode(evt, evt.GetType(), _jsonOptions)
-                       ?? new JsonObject();
-
-            node["_eventType"] = evt.GetType().Name;
-            node["_timestamp"] = DateTimeOffset.UtcNow.ToString("O");
-
-            BroadcastRaw(node.ToJsonString(_jsonOptions));
+            BroadcastRaw(BuildEventJson(evt.GetType().Name, evt, evt.GetType()));
         }
         catch (Exception ex)
         {
@@ -129,9 +122,10 @@ public sealed class CopilotService : IHostedService, IAsyncDisposable
         }
     }
 
-    private string BuildSyntheticEvent(string eventType, object payload)
+    private string BuildEventJson(string eventType, object payload, Type? runtimeType = null)
     {
-        var node = JsonSerializer.SerializeToNode(payload, _jsonOptions) ?? new JsonObject();
+        var node = JsonSerializer.SerializeToNode(payload, runtimeType ?? payload.GetType(), _jsonOptions)
+                   ?? new JsonObject();
         node["_eventType"] = eventType;
         node["_timestamp"] = DateTimeOffset.UtcNow.ToString("O");
         return node.ToJsonString(_jsonOptions);
