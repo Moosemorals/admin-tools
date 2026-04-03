@@ -12,6 +12,14 @@ indent_size              = 4
 [*.{js,css,html,yml,yaml,json}]
 indent_size = 2
 
+[*.js]
+# ES modules (import/export) only — no CommonJS (require/module.exports).
+# Single quotes for string literals; template literals for interpolation.
+# Semicolons at the end of every statement.
+# K&R brace style — opening brace on the same line as the statement.
+# Prefer const for bindings that are never reassigned; let for mutable; never var.
+# JSDoc comments on every exported function, documenting params and return type.
+
 [*.cs]
 # K&R: opening brace on the same line as the statement/declaration.
 csharp_new_line_before_open_brace  = none

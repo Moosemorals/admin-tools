@@ -131,14 +131,16 @@ aside#sidebar {
 .session-item:hover  { background: var(--hover); }
 .session-item.active { background: var(--hover); border-left: 2px solid var(--blue); }
 
-.session-title {
-  color: var(--text);
+/* Both title and workdir need ellipsis truncation with the same right-padding to
+   avoid overlapping the absolutely-positioned delete button. */
+.session-title, .session-workdir {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  padding-right: 18px; /* room for delete btn */
+  padding-right: 18px;
 }
-.session-ts { color: var(--text-muted); font-size: 10px; }
+.session-title { color: var(--text); }
+.session-ts    { color: var(--text-muted); font-size: 10px; }
 
 .unread-dot {
   position: absolute;
@@ -242,7 +244,9 @@ main#main-area {
 }
 .event-card > summary::-webkit-details-marker { display: none; }
 .event-card > summary::before       { content: "▶"; font-size: 9px; color: var(--text-muted); }
-.event-card[open] > summary::before { content: "▼"; }
+/* Both event-card and nested-details use the same open/closed triangle. */
+.event-card[open] > summary::before,
+.nested-details[open] > summary::before { content: "▼"; }
 
 .event-type { font-weight: 700; color: var(--event-type); }
 .event-ts   { color: var(--text-muted); font-size: 11px; margin-left: auto; }
@@ -256,7 +260,7 @@ main#main-area {
 .prop-null   { color: var(--text-dim); font-style: italic; }
 .prop-bool   { color: var(--event-type); }
 .prop-number { color: var(--yellow); }
-.prop-string { color: var(--prop-val); }
+/* .prop-string inherits var(--prop-val) from .prop-scalar — no override needed */
 
 /* ── Nested details ─────────────────────────────────────────────────────────── */
 .nested-details { width: 100%; }
@@ -270,7 +274,7 @@ main#main-area {
 }
 .nested-details > summary::-webkit-details-marker { display: none; }
 .nested-details > summary::before       { content: "▶"; font-size: 9px; }
-.nested-details[open] > summary::before { content: "▼"; }
+/* [open] state handled by the combined rule in the event-card section above */
 .nested-details > summary .prop-key { color: var(--purple); }
 .nested-details > summary .preview  { color: var(--text-muted); font-size: 11px; }
 .nested-content { padding: 3px 0 0 16px; display: flex; flex-direction: column; gap: 3px; }
@@ -393,14 +397,8 @@ pre.prop-value {
 .event-card.type-system    { border-left: 3px solid var(--text-muted); }
 
 /* ── Session working directory tag ──────────────────────────────────────────── */
-.session-workdir {
-  color: var(--text-dim);
-  font-size: 10px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  padding-right: 18px;
-}
+/* Truncation is shared with .session-title via the combined rule above. */
+.session-workdir { color: var(--text-dim); font-size: 10px; }
 
 /* ── Project-folder picker modal ────────────────────────────────────────────── */
 #project-folder-dialog {
@@ -433,25 +431,14 @@ pre.prop-value {
   max-height: 320px;
   overflow-y: auto;
 }
-.folder-item {
-  padding: 8px 10px;
-  border-radius: 6px;
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.folder-item:hover { background: var(--hover); }
+/* Both folder-item and folder-none share padding, shape, pointer, and hover bg. */
+.folder-item, .folder-none { padding: 8px 10px; border-radius: 6px; cursor: pointer; }
+.folder-item { display: flex; flex-direction: column; gap: 2px; }
 .folder-item-name { font-weight: 600; color: var(--text); }
 .folder-item-path { font-size: 10px; color: var(--text-muted); }
-.folder-none {
-  padding: 8px 10px;
-  border-radius: 6px;
-  cursor: pointer;
-  color: var(--text-muted);
-  font-style: italic;
-}
-.folder-none:hover { background: var(--hover); color: var(--text); }
+.folder-none { color: var(--text-muted); font-style: italic; }
+.folder-item:hover, .folder-none:hover { background: var(--hover); }
+.folder-none:hover { color: var(--text); }
 .dialog-footer {
   padding: 8px 16px 12px;
   border-top: 1px solid var(--border);

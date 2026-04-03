@@ -1,13 +1,15 @@
 namespace uk.osric.copilot.Web {
     using Microsoft.EntityFrameworkCore;
+    using System.Text.Json;
     using uk.osric.copilot.Data;
     using uk.osric.copilot.Services;
 
     internal static class AppServiceExtensions {
         /// <summary>
-        /// Registers EF Core, the SSE broadcaster, the session repository, and the
-        /// Copilot hosted service.  Call this on <see cref="WebApplicationBuilder"/>
-        /// before <see cref="WebApplicationBuilder.Build"/>.
+        /// Registers EF Core, the SSE broadcaster, the session repository, the
+        /// Copilot hosted service, and the MVC controller infrastructure.
+        /// Call this on <see cref="WebApplicationBuilder"/> before
+        /// <see cref="WebApplicationBuilder.Build"/>.
         /// </summary>
         internal static WebApplicationBuilder AddCopilotServices(this WebApplicationBuilder builder) {
             var dbPath = builder.Configuration.GetValue<string>("DatabasePath") ?? "copilot-sessions.db";
@@ -30,7 +32,16 @@ namespace uk.osric.copilot.Web {
             // Register as both the concrete type (for direct resolution) and the hosted service.
             builder.Services.AddHostedService(sp => sp.GetRequiredService<CopilotService>());
 
+            // AddControllers brings in MVC routing and model binding.
+            // JSON options are configured to match what the frontend expects: camelCase
+            // output and case-insensitive input so callers can use any casing.
+            builder.Services.AddControllers().AddJsonOptions(opts => {
+                opts.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+                opts.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
+            });
+
             return builder;
         }
     }
 }
+
