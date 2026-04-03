@@ -1,8 +1,10 @@
 using System.Text.Json;
-using CopilotWrapper.Data;
-using CopilotWrapper.Services;
+using uk.osric.copilot.Data;
+using uk.osric.copilot.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Host.UseSystemd();
 
 var dbPath     = builder.Configuration.GetValue<string>("DatabasePath") ?? "copilot-sessions.db";
 var copilotUrl = builder.Configuration.GetValue<string>("CopilotUrl");

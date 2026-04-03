@@ -5,12 +5,20 @@
     <LangVersion>14</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <RootNamespace>CopilotWrapper</RootNamespace>
+    <RootNamespace>uk.osric.copilot</RootNamespace>
+    <AssemblyName>uk.osric.copilot</AssemblyName>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <ContainerRegistry>registry.osric.uk</ContainerRegistry>
+    <ContainerRepository>uk.osric.copilot</ContainerRepository>
+    <ContainerImageTag>latest</ContainerImageTag>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="GitHub.Copilot.SDK" Version="0.2.1-preview.2" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.5" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Systemd" Version="10.0.5" />
   </ItemGroup>
 
 </Project>

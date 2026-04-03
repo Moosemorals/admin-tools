@@ -1,7 +1,7 @@
 using Microsoft.Data.Sqlite;
-using CopilotWrapper.Models;
+using uk.osric.copilot.Models;
 
-namespace CopilotWrapper.Data;
+namespace uk.osric.copilot.Data;
 
 /// <summary>
 /// SQLite-backed store for session records owned by this UI instance.

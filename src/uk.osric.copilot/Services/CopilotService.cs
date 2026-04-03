@@ -1,11 +1,11 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Threading.Channels;
-using CopilotWrapper.Data;
-using CopilotWrapper.Models;
+using uk.osric.copilot.Data;
+using uk.osric.copilot.Models;
 using GitHub.Copilot.SDK;
 
-namespace CopilotWrapper.Services;
+namespace uk.osric.copilot.Services;
 
 /// <summary>
 /// Hosted service that manages a GitHub Copilot CLI client and multiple sessions,

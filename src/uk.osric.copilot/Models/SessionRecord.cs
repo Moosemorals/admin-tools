@@ -1,4 +1,4 @@
-namespace CopilotWrapper.Models;
+namespace uk.osric.copilot.Models;
 
 public record SessionRecord(
     string Id,
