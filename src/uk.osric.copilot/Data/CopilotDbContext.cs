@@ -3,14 +3,11 @@ using uk.osric.copilot.Models;
 
 namespace uk.osric.copilot.Data;
 
-public class CopilotDbContext(DbContextOptions<CopilotDbContext> options) : DbContext(options)
-{
+public class CopilotDbContext(DbContextOptions<CopilotDbContext> options) : DbContext(options) {
     public DbSet<Session> Sessions { get; set; } = null!;
 
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
-    {
-        modelBuilder.Entity<Session>(entity =>
-        {
+    protected override void OnModelCreating(ModelBuilder modelBuilder) {
+        modelBuilder.Entity<Session>(entity => {
             entity.ToTable("sessions");
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Id).HasColumnName("id");

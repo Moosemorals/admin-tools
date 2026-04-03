@@ -1,8 +1,7 @@
 namespace uk.osric.copilot.Models;
 
 /// <summary>Persisted Copilot session record (EF Core entity).</summary>
-public class Session
-{
+public class Session {
     public string Id { get; set; } = null!;
     public string Title { get; set; } = null!;
     public DateTimeOffset CreatedAt { get; set; }

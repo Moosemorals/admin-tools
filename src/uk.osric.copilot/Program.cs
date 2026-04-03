@@ -24,24 +24,16 @@ builder.Services.AddHostedService(sp => sp.GetRequiredService<CopilotService>())
 var app = builder.Build();
 
 // ── Database migration ────────────────────────────────────────────────────────
-{
-    await using var scope = app.Services.CreateAsyncScope();
-    var db = scope.ServiceProvider.GetRequiredService<CopilotDbContext>();
-
-    // Backward compatibility: if a pre-EF raw-SQL database already has a
-    // 'sessions' table but no '__EFMigrationsHistory' table, stamp the
-    // InitialCreate migration as done so MigrateAsync only applies the
-    // AddWorkingDirectory migration (and any future ones).
-    await StampPreEfDatabaseAsync(db);
-    await db.Database.MigrateAsync();
-}
+await using var migrationScope = app.Services.CreateAsyncScope();
+var migrationDb = migrationScope.ServiceProvider.GetRequiredService<CopilotDbContext>();
+await StampPreEfDatabaseAsync(migrationDb);
+await migrationDb.Database.MigrateAsync();
 
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
 // ── SSE stream ──────────────────────────────────────────────────────────────
-app.MapGet("/events", async (CopilotService copilot, HttpContext ctx, CancellationToken ct) =>
-{
+app.MapGet("/events", async (CopilotService copilot, HttpContext ctx, CancellationToken ct) => {
     ctx.Response.Headers.ContentType = "text/event-stream";
     ctx.Response.Headers.CacheControl = "no-cache";
     ctx.Response.Headers.Connection = "keep-alive";
@@ -50,30 +42,24 @@ app.MapGet("/events", async (CopilotService copilot, HttpContext ctx, Cancellati
     await ctx.Response.Body.FlushAsync(ct);
 
     var reader = copilot.Subscribe();
-    try
-    {
-        await foreach (var json in reader.ReadAllAsync(ct))
-        {
+    try {
+        await foreach (var json in reader.ReadAllAsync(ct)) {
             await ctx.Response.WriteAsync($"data: {json}\n\n", ct);
             await ctx.Response.Body.FlushAsync(ct);
         }
-    }
-    catch (OperationCanceledException)
-    {
+    } catch (OperationCanceledException) {
         // Client disconnected – normal exit.
-    }
-    finally
-    {
+    } finally {
         copilot.Unsubscribe(reader);
     }
 });
 
 // ── Project folders ────────────────────────────────────────────────────────────
-app.MapGet("/project-folders", (IConfiguration config) =>
-{
+app.MapGet("/project-folders", (IConfiguration config) => {
     var root = config.GetValue<string>("ProjectFoldersPath") ?? string.Empty;
-    if (string.IsNullOrWhiteSpace(root) || !Directory.Exists(root))
+    if (string.IsNullOrWhiteSpace(root) || !Directory.Exists(root)) {
         return Results.Ok(Array.Empty<object>());
+    }
 
     var folders = Directory.EnumerateDirectories(root)
         .Where(dir => Directory.Exists(Path.Combine(dir, ".git")))
@@ -85,121 +71,97 @@ app.MapGet("/project-folders", (IConfiguration config) =>
 });
 
 // ── Session list ─────────────────────────────────────────────────────────────
-app.MapGet("/sessions", async (CopilotService copilot) =>
-{
+app.MapGet("/sessions", async (CopilotService copilot) => {
     var sessions = await copilot.ListSessionsAsync();
     return Results.Ok(sessions);
 });
 
 // ── Create session ────────────────────────────────────────────────────────────
-app.MapPost("/sessions", async (CopilotService copilot, HttpContext ctx) =>
-{
+app.MapPost("/sessions", async (CopilotService copilot, HttpContext ctx) => {
     // Accept an optional JSON body: { "workingDirectory": "..." }
     CreateSessionRequest? body = null;
     if (ctx.Request.ContentLength > 0 ||
-        ctx.Request.Headers.ContentType.ToString().Contains("json"))
-    {
-        try
-        {
+        ctx.Request.Headers.ContentType.ToString().Contains("json")) {
+        try {
             body = await JsonSerializer.DeserializeAsync<CreateSessionRequest>(
                 ctx.Request.Body,
                 new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-        }
-        catch { /* invalid JSON – treat as no body */ }
+        } catch { /* invalid JSON – treat as no body */ }
     }
 
     string? workingDirectory = null;
-    if (!string.IsNullOrWhiteSpace(body?.WorkingDirectory))
-    {
+    if (!string.IsNullOrWhiteSpace(body?.WorkingDirectory)) {
         var validated = ValidateProjectFolder(
             ctx.RequestServices.GetRequiredService<IConfiguration>(),
             body.WorkingDirectory);
 
-        if (validated is null)
+        if (validated is null) {
             return Results.BadRequest("The supplied working directory is not a valid project folder.");
+        }
 
         workingDirectory = validated;
     }
 
-    try
-    {
+    try {
         var record = await copilot.CreateSessionAsync(workingDirectory);
         return Results.Ok(record);
-    }
-    catch (InvalidOperationException ex)
-    {
+    } catch (InvalidOperationException ex) {
         return Results.Problem(ex.Message, statusCode: 503);
     }
 });
 
 // ── Session message history ───────────────────────────────────────────────────
-app.MapGet("/sessions/{sessionId}/messages", async (CopilotService copilot, string sessionId) =>
-{
-    try
-    {
+app.MapGet("/sessions/{sessionId}/messages", async (CopilotService copilot, string sessionId) => {
+    try {
         var messages = await copilot.GetMessagesJsonAsync(sessionId);
         return Results.Ok(messages);
-    }
-    catch (KeyNotFoundException)
-    {
+    } catch (KeyNotFoundException) {
         return Results.NotFound();
     }
 });
 
 // ── Send a prompt to a session ────────────────────────────────────────────────
 app.MapPost("/sessions/{sessionId}/send",
-    async (CopilotService copilot, string sessionId, HttpContext ctx) =>
-    {
+    async (CopilotService copilot, string sessionId, HttpContext ctx) => {
         var prompt = await new StreamReader(ctx.Request.Body).ReadToEndAsync();
-        if (string.IsNullOrWhiteSpace(prompt))
+        if (string.IsNullOrWhiteSpace(prompt)) {
             return Results.Ok(new { skipped = true });
+        }
 
-        try
-        {
+        try {
             var messageId = await copilot.SendAsync(sessionId, prompt.Trim());
             return Results.Ok(new { messageId });
-        }
-        catch (KeyNotFoundException)
-        {
+        } catch (KeyNotFoundException) {
             return Results.NotFound();
-        }
-        catch (InvalidOperationException ex)
-        {
+        } catch (InvalidOperationException ex) {
             return Results.Problem(ex.Message, statusCode: 503);
         }
     });
 
 // ── Delete a session ──────────────────────────────────────────────────────────
-app.MapDelete("/sessions/{sessionId}", async (CopilotService copilot, string sessionId) =>
-{
-    try
-    {
+app.MapDelete("/sessions/{sessionId}", async (CopilotService copilot, string sessionId) => {
+    try {
         await copilot.DeleteSessionAsync(sessionId);
         return Results.NoContent();
-    }
-    catch (KeyNotFoundException)
-    {
+    } catch (KeyNotFoundException) {
         return Results.NotFound();
     }
 });
 
 // ── Reply to a user-input request ─────────────────────────────────────────────
-app.MapPost("/user-input-reply", async (CopilotService copilot, HttpContext ctx) =>
-{
+app.MapPost("/user-input-reply", async (CopilotService copilot, HttpContext ctx) => {
     UserInputReply? body;
-    try
-    {
+    try {
         body = await JsonSerializer.DeserializeAsync<UserInputReply>(
             ctx.Request.Body,
             new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-    }
-    catch
-    {
+    } catch {
         return Results.BadRequest("Invalid JSON body.");
     }
 
-    if (body is null || string.IsNullOrEmpty(body.RequestId))
+    if (body is null || string.IsNullOrEmpty(body.RequestId)) {
         return Results.BadRequest("requestId is required.");
+    }
 
     var found = copilot.ReplyUserInput(body.RequestId, body.Answer ?? string.Empty, body.WasFreeform);
     return found
@@ -217,29 +179,40 @@ app.Run();
 /// must contain a .git directory.
 /// Returns the canonical absolute path, or null if validation fails.
 /// </summary>
-static string? ValidateProjectFolder(IConfiguration config, string path)
-{
+static string? ValidateProjectFolder(IConfiguration config, string path) {
     var root = config.GetValue<string>("ProjectFoldersPath") ?? string.Empty;
-    if (string.IsNullOrWhiteSpace(root)) return null;
+    if (string.IsNullOrWhiteSpace(root)) {
+        return null;
+    }
 
     // Resolve to canonical paths to prevent traversal.
     string canonical;
-    try { canonical = Path.GetFullPath(path); }
-    catch { return null; }
+    try {
+        canonical = Path.GetFullPath(path);
+    } catch {
+        return null;
+    }
 
     var rootFull = Path.GetFullPath(root).TrimEnd(Path.DirectorySeparatorChar)
                    + Path.DirectorySeparatorChar;
 
     // Must be a direct child (no deeper nesting).
-    if (!canonical.StartsWith(rootFull, StringComparison.OrdinalIgnoreCase))
+    if (!canonical.StartsWith(rootFull, StringComparison.OrdinalIgnoreCase)) {
         return null;
+    }
 
     var relative = canonical[rootFull.Length..];
-    if (relative.Contains(Path.DirectorySeparatorChar)) return null; // nested
+    if (relative.Contains(Path.DirectorySeparatorChar)) {
+        return null;
+    }
 
     // Must exist and have a .git folder.
-    if (!Directory.Exists(canonical)) return null;
-    if (!Directory.Exists(Path.Combine(canonical, ".git"))) return null;
+    if (!Directory.Exists(canonical)) {
+        return null;
+    }
+    if (!Directory.Exists(Path.Combine(canonical, ".git"))) {
+        return null;
+    }
 
     return canonical;
 }
@@ -251,38 +224,39 @@ static string? ValidateProjectFolder(IConfiguration config, string path)
 /// future migrations on upgrade.  Also adds the working_directory column if
 /// it is missing from the legacy schema.
 /// </summary>
-static async Task StampPreEfDatabaseAsync(CopilotDbContext db)
-{
+static async Task StampPreEfDatabaseAsync(CopilotDbContext db) {
     // Check whether the EF migrations history table already exists.
     bool historyExists;
-    try
-    {
+    try {
         await db.Database.ExecuteSqlRawAsync(
             "SELECT 1 FROM __EFMigrationsHistory LIMIT 1");
         historyExists = true;
+    } catch {
+        historyExists = false;
     }
-    catch { historyExists = false; }
 
-    if (historyExists) return;
+    if (historyExists) {
+        return;
+    }
 
     // No history table.  Check for the pre-existing sessions table.
     bool sessionsExist;
-    try
-    {
+    try {
         await db.Database.ExecuteSqlRawAsync("SELECT 1 FROM sessions LIMIT 1");
         sessionsExist = true;
+    } catch {
+        sessionsExist = false;
     }
-    catch { sessionsExist = false; }
 
-    if (!sessionsExist) return; // Fresh install – let MigrateAsync do everything.
+    if (!sessionsExist) {
+        return; // Fresh install – let MigrateAsync do everything.
+    }
 
     // Existing raw-SQL database: ensure the working_directory column exists.
-    try
-    {
+    try {
         await db.Database.ExecuteSqlRawAsync(
             "ALTER TABLE sessions ADD COLUMN working_directory TEXT");
-    }
-    catch { /* Column already exists – that's fine. */ }
+    } catch { /* Column already exists – that's fine. */ }
 
     // Create the history table and stamp InitialCreate as already applied
     // so MigrateAsync won't try to recreate the sessions table.
@@ -303,5 +277,4 @@ static async Task StampPreEfDatabaseAsync(CopilotDbContext db)
 // ── Request models ─────────────────────────────────────────────────────────────
 internal record UserInputReply(string RequestId, string? Answer, bool WasFreeform);
 internal record CreateSessionRequest(string? WorkingDirectory);
-
 
