@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: Copyright (c) 2026 Osric Wilkinson
+// SPDX-License-Identifier: MIT
+
 namespace uk.osric.copilot.Tests.Unit {
     using System.Security.Cryptography.X509Certificates;
     using NUnit.Framework;

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: Copyright (c) 2026 Osric Wilkinson
+// SPDX-License-Identifier: MIT
+
 namespace uk.osric.copilot.Tests.Unit {
     using NUnit.Framework;
     using uk.osric.copilot.Infrastructure;

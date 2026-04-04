@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: Copyright (c) 2026 Osric Wilkinson
+// SPDX-License-Identifier: MIT
+
 namespace uk.osric.copilot.Configuration {
     public sealed class CopilotOptions {
         public string DatabasePath { get; set; } = "copilot-sessions.db";

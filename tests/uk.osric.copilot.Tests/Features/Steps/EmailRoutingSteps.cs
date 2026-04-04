@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: Copyright (c) 2026 Osric Wilkinson
+// SPDX-License-Identifier: MIT
+
 namespace uk.osric.copilot.Tests.Features.Steps {
     using System.Diagnostics.Metrics;
     using System.Security.Cryptography;

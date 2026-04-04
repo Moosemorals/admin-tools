@@ -9,11 +9,11 @@ dotnet build uk.osric.copilot.slnx
 make build
 
 # Run all tests
-dotnet test src/uk.osric.copilot.Tests/
+dotnet test tests/uk.osric.copilot.Tests/
 
 # Run a single test class or feature by name
-dotnet test src/uk.osric.copilot.Tests/ --filter "FullyQualifiedName~CertificateServiceTests"
-dotnet test src/uk.osric.copilot.Tests/ --filter "FullyQualifiedName~EmailRouting"
+dotnet test tests/uk.osric.copilot.Tests/ --filter "FullyQualifiedName~CertificateServiceTests"
+dotnet test tests/uk.osric.copilot.Tests/ --filter "FullyQualifiedName~EmailRouting"
 
 # Format (C# only — applies .editorconfig rules)
 dotnet format src/uk.osric.copilot/uk.osric.copilot.csproj
@@ -113,7 +113,7 @@ OTLP tracing is enabled only when `OTEL_EXPORTER_OTLP_ENDPOINT` is set in the en
 
 ## Testing
 
-Tests live in `src/uk.osric.copilot.Tests/`. There are two styles:
+Tests live in `tests/uk.osric.copilot.Tests/`. There are two styles:
 
 - **BDD (Reqnroll/NUnit):** `.feature` files under `Features/` describe behaviour in Gherkin; step bindings are in `Features/Steps/`. Use this for end-to-end service behaviour (e.g. email routing scenarios).
 - **Unit (NUnit):** Plain NUnit tests under `Unit/` for isolated service logic.

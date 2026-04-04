@@ -30,9 +30,29 @@ csharp_new_line_before_finally     = false
 # Braces are never optional.
 csharp_prefer_braces = true:error
 
+# Block-scoped namespaces (not file-scoped).
+csharp_style_namespace_declarations = block_scoped:error
+
 # using directives belong inside the namespace block.
 csharp_using_directive_placement = inside_namespace:error
+
+# All non-interface members must have explicit accessibility modifiers.
+dotnet_style_require_accessibility_modifiers = for_non_interface_members:error
+
+# Modifier order: static before readonly.
+csharp_preferred_modifier_order = public, private, protected, internal, file, new, static, abstract, virtual, sealed, override, readonly, extern, unsafe, volatile, async, required:error
+
+# SPDX file header on every authored source file.
+file_header_template = SPDX-FileCopyrightText: Copyright (c) 2026 Osric Wilkinson\nSPDX-License-Identifier: MIT
+dotnet_diagnostic.ide0073.severity = error
 
 # Extension methods are the preferred way to group related operations on a type
 # (e.g. app.MapCopilotApi(), builder.AddCopilotServices()).
 # There is no formal Roslyn rule for this — it is a project convention.
+
+# EF Core migration files are auto-generated; exclude style rules.
+[**/Migrations/*.cs]
+dotnet_diagnostic.ide0036.severity = none
+dotnet_diagnostic.ide0065.severity = none
+dotnet_diagnostic.ide0073.severity = none
+dotnet_diagnostic.ide0161.severity = none

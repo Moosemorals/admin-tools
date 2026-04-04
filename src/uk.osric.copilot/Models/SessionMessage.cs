@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: Copyright (c) 2026 Osric Wilkinson
+// SPDX-License-Identifier: MIT
+
 namespace uk.osric.copilot.Models {
     /// <summary>
     /// A single stored event message — either a Copilot SDK event, a user prompt,

@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: Copyright (c) 2026 Osric Wilkinson
+// SPDX-License-Identifier: MIT
+
 // @ts-check
 
 /** Escape a value for safe insertion into HTML attribute or text content.

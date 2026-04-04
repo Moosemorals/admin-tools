@@ -16,6 +16,12 @@ publish/
 .vscode/
 *.DotSettings.user
 
+# Test results
+[Tt]est[Rr]esult*/
+*.coverage
+*.coveragexml
+TestResult.xml
+
 # Runtime artefacts
 *.log
 
