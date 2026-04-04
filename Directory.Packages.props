@@ -4,7 +4,7 @@
   </PropertyGroup>
   <ItemGroup>
     <!-- uk.osric.copilot -->
-    <PackageVersion Include="GitHub.Copilot.SDK" Version="0.2.1-preview.2" />
+    <PackageVersion Include="GitHub.Copilot.SDK" Version="0.2.1" />
     <PackageVersion Include="MailKit" Version="4.15.1" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.5" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.5" />
