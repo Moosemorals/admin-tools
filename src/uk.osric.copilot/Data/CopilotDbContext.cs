@@ -9,6 +9,8 @@ namespace uk.osric.copilot.Data {
     public class CopilotDbContext(DbContextOptions<CopilotDbContext> options) : DbContext(options) {
         public DbSet<Session> Sessions { get; set; } = null!;
         public DbSet<SessionMessage> Messages { get; set; } = null!;
+        public DbSet<EmailCertificate> EmailCertificates { get; set; } = null!;
+        public DbSet<ImapSyncState> ImapSyncStates { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder) {
             modelBuilder.Entity<Session>(entity => {
@@ -32,6 +34,8 @@ namespace uk.osric.copilot.Data {
                           v => DateTimeOffset.ParseExact(v, "O", null));
 
                 entity.Property(e => e.WorkingDirectory).HasColumnName("working_directory");
+                entity.Property(e => e.EmailAddress).HasColumnName("email_address");
+                entity.Property(e => e.InboundMessageId).HasColumnName("inbound_message_id");
             });
 
             modelBuilder.Entity<SessionMessage>(entity => {
@@ -47,6 +51,49 @@ namespace uk.osric.copilot.Data {
                           v => v.ToString("O"),
                           v => DateTimeOffset.ParseExact(v, "O", null));
                 entity.HasIndex(e => e.SessionId).HasDatabaseName("IX_messages_session_id");
+            });
+
+            modelBuilder.Entity<EmailCertificate>(entity => {
+                entity.ToTable("email_certificates");
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedOnAdd();
+                entity.Property(e => e.EmailAddress).HasColumnName("email_address").IsRequired();
+                entity.Property(e => e.SubjectDn).HasColumnName("subject_dn").IsRequired();
+                entity.Property(e => e.Fingerprint).HasColumnName("fingerprint").IsRequired();
+                entity.Property(e => e.PfxData).HasColumnName("pfx_data").IsRequired();
+                entity.Property(e => e.CertificateDer).HasColumnName("certificate_der").IsRequired();
+                entity.Property(e => e.NotBefore)
+                      .HasColumnName("not_before")
+                      .HasConversion(
+                          v => v.ToString("O"),
+                          v => DateTimeOffset.ParseExact(v, "O", null));
+                entity.Property(e => e.NotAfter)
+                      .HasColumnName("not_after")
+                      .HasConversion(
+                          v => v.ToString("O"),
+                          v => DateTimeOffset.ParseExact(v, "O", null));
+                entity.Property(e => e.IsRevoked).HasColumnName("is_revoked");
+                entity.Property(e => e.CreatedAt)
+                      .HasColumnName("created_at")
+                      .HasConversion(
+                          v => v.ToString("O"),
+                          v => DateTimeOffset.ParseExact(v, "O", null));
+                entity.HasIndex(e => e.EmailAddress).HasDatabaseName("IX_email_certificates_email_address");
+            });
+
+            modelBuilder.Entity<ImapSyncState>(entity => {
+                entity.ToTable("imap_sync_state");
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedNever();
+                entity.Property(e => e.UidValidity)
+                      .HasColumnName("uid_validity")
+                      .HasConversion(v => (long)v, v => (uint)v);
+                entity.Property(e => e.HighestModSeq)
+                      .HasColumnName("highest_mod_seq")
+                      .HasConversion(v => (long)v, v => (ulong)v);
+                entity.Property(e => e.LastSeenUid)
+                      .HasColumnName("last_seen_uid")
+                      .HasConversion(v => (long)v, v => (uint)v);
             });
         }
     }

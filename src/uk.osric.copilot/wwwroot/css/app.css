@@ -485,3 +485,41 @@ pre.prop-value {
     &:hover { border-color: var(--text-muted); color: var(--text); }
   }
 }
+
+/* ── Shared utility classes (used by keys.html and other standalone pages) ── */
+
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 1.25rem; margin-bottom: 1.25rem; }
+.row  { display: flex; gap: 0.75rem; align-items: flex-end; flex-wrap: wrap; }
+.field { flex: 1; min-width: 160px; }
+
+label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.3rem; color: var(--text-muted); }
+input[type=text], input[type=number], input[type=email], select {
+  padding: 0.45rem 0.65rem; border: 1px solid var(--border); border-radius: 4px;
+  font: inherit; width: 100%; background: var(--bg); color: var(--text);
+}
+input:focus, select:focus { outline: none; border-color: var(--blue); }
+
+.btn { padding: 0.45rem 1rem; border: none; border-radius: 4px; cursor: pointer; font: inherit; font-weight: 600; white-space: nowrap; }
+.btn-primary { background: var(--btn-bg); color: #fff; border: 1px solid var(--btn-border); }
+.btn-primary:hover { background: var(--btn-hover); }
+.btn-danger  { background: none; color: var(--red); border: 1px solid var(--red); font-size: 0.8rem; padding: 0.3rem 0.65rem; border-radius: 4px; }
+.btn-danger:hover { background: var(--red); color: #fff; }
+.btn-small   { background: none; color: var(--blue); border: 1px solid var(--blue); font-size: 0.8rem; padding: 0.3rem 0.65rem; border-radius: 4px; }
+.btn-small:hover { background: var(--blue); color: var(--bg); }
+
+table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+th { background: var(--hover); text-align: left; padding: 0.5rem 0.7rem; border-bottom: 2px solid var(--border); color: var(--text-muted); }
+td { padding: 0.45rem 0.7rem; border-bottom: 1px solid var(--border); vertical-align: middle; color: var(--text); }
+tr:hover td { background: var(--hover); }
+
+.badge { display: inline-block; padding: 0.2rem 0.5rem; border-radius: 3px; font-size: 0.75rem; font-weight: 700; }
+.badge-valid   { background: color-mix(in srgb, var(--green) 15%, transparent); color: var(--green); }
+.badge-expired { background: color-mix(in srgb, var(--yellow) 15%, transparent); color: var(--yellow); }
+.badge-revoked { background: color-mix(in srgb, var(--red) 15%, transparent); color: var(--red); }
+
+.msg { padding: 0.65rem 1rem; border-radius: 4px; margin-top: 0.75rem; font-size: 0.875rem; }
+.msg-ok  { background: color-mix(in srgb, var(--green) 15%, transparent); color: var(--green); }
+.msg-err { background: color-mix(in srgb, var(--red) 15%, transparent); color: var(--red); }
+
+.actions { display: flex; gap: 0.4rem; }
+code { font-size: 0.78rem; word-break: break-all; color: var(--text-muted); }

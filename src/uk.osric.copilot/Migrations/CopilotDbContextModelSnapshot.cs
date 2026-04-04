@@ -13,6 +13,86 @@ namespace uk.osric.copilot.Migrations {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.5");
 
+            modelBuilder.Entity("uk.osric.copilot.Models.EmailCertificate", b => {
+                b.Property<int>("Id")
+                    .ValueGeneratedOnAdd()
+                    .HasColumnType("INTEGER")
+                    .HasColumnName("id");
+
+                b.Property<byte[]>("CertificateDer")
+                    .IsRequired()
+                    .HasColumnType("BLOB")
+                    .HasColumnName("certificate_der");
+
+                b.Property<string>("CreatedAt")
+                    .IsRequired()
+                    .HasColumnType("TEXT")
+                    .HasColumnName("created_at");
+
+                b.Property<string>("EmailAddress")
+                    .IsRequired()
+                    .HasColumnType("TEXT")
+                    .HasColumnName("email_address");
+
+                b.Property<bool>("IsRevoked")
+                    .HasColumnType("INTEGER")
+                    .HasColumnName("is_revoked");
+
+                b.Property<string>("NotAfter")
+                    .IsRequired()
+                    .HasColumnType("TEXT")
+                    .HasColumnName("not_after");
+
+                b.Property<string>("NotBefore")
+                    .IsRequired()
+                    .HasColumnType("TEXT")
+                    .HasColumnName("not_before");
+
+                b.Property<byte[]>("PfxData")
+                    .IsRequired()
+                    .HasColumnType("BLOB")
+                    .HasColumnName("pfx_data");
+
+                b.Property<string>("Fingerprint")
+                    .IsRequired()
+                    .HasColumnType("TEXT")
+                    .HasColumnName("fingerprint");
+
+                b.Property<string>("SubjectDn")
+                    .IsRequired()
+                    .HasColumnType("TEXT")
+                    .HasColumnName("subject_dn");
+
+                b.HasKey("Id");
+
+                b.HasIndex("EmailAddress")
+                    .HasDatabaseName("IX_email_certificates_email_address");
+
+                b.ToTable("email_certificates", (string)null);
+            });
+
+            modelBuilder.Entity("uk.osric.copilot.Models.ImapSyncState", b => {
+                b.Property<int>("Id")
+                    .HasColumnType("INTEGER")
+                    .HasColumnName("id");
+
+                b.Property<long>("UidValidity")
+                    .HasColumnType("INTEGER")
+                    .HasColumnName("uid_validity");
+
+                b.Property<long>("HighestModSeq")
+                    .HasColumnType("INTEGER")
+                    .HasColumnName("highest_mod_seq");
+
+                b.Property<long>("LastSeenUid")
+                    .HasColumnType("INTEGER")
+                    .HasColumnName("last_seen_uid");
+
+                b.HasKey("Id");
+
+                b.ToTable("imap_sync_state", (string)null);
+            });
+
             modelBuilder.Entity("uk.osric.copilot.Models.Session", b => {
                 b.Property<string>("Id")
                     .HasColumnType("TEXT")
@@ -36,6 +116,14 @@ namespace uk.osric.copilot.Migrations {
                 b.Property<string>("WorkingDirectory")
                     .HasColumnType("TEXT")
                     .HasColumnName("working_directory");
+
+                b.Property<string>("EmailAddress")
+                    .HasColumnType("TEXT")
+                    .HasColumnName("email_address");
+
+                b.Property<string>("InboundMessageId")
+                    .HasColumnType("TEXT")
+                    .HasColumnName("inbound_message_id");
 
                 b.HasKey("Id");
 

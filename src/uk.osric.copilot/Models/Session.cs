@@ -11,5 +11,16 @@ namespace uk.osric.copilot.Models {
         /// Null for sessions created before this feature was added.
         /// </summary>
         public string? WorkingDirectory { get; set; }
+        /// <summary>
+        /// Email address of the user who initiated this session via email.
+        /// Null for sessions created from the web UI.
+        /// </summary>
+        public string? EmailAddress { get; set; }
+
+        /// <summary>
+        /// The RFC 2822 Message-ID of the original inbound email that started this session.
+        /// Used to set In-Reply-To and References headers on outbound replies.
+        /// </summary>
+        public string? InboundMessageId { get; set; }
     }
 }

@@ -25,3 +25,4 @@ src/GitMigrator/config.json
 # Migration state files (user-specific, not part of the tool)
 .migration-state.json
 *.migration-state.json
+src/uk.osric.copilot/copilot-sessions.db
