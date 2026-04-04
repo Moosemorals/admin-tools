@@ -39,7 +39,7 @@ namespace uk.osric.copilot.Services {
             var entity = new EmailCertificate {
                 EmailAddress = emailAddress,
                 SubjectDn = cert.Subject,
-                SerialNumber = cert.SerialNumber,
+                Fingerprint = cert.GetCertHashString(HashAlgorithmName.SHA256),
                 PfxData = pfxData,
                 CertificateDer = derData,
                 NotBefore = notBefore,
@@ -92,10 +92,10 @@ namespace uk.osric.copilot.Services {
         /// record in the database. Returns the matching record or null if invalid.
         /// </summary>
         public async Task<EmailCertificate?> ValidateCertificateAsync(X509Certificate2 cert) {
-            var serialNumber = cert.SerialNumber;
+            var fingerprint = cert.GetCertHashString(HashAlgorithmName.SHA256);
             await using var db = await dbFactory.CreateDbContextAsync();
             var candidates = await db.EmailCertificates
-                .Where(c => c.SerialNumber == serialNumber && !c.IsRevoked)
+                .Where(c => c.Fingerprint == fingerprint && !c.IsRevoked)
                 .ToListAsync();
 
             var now = DateTimeOffset.UtcNow;

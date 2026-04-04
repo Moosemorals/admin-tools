@@ -1,5 +1,10 @@
 namespace uk.osric.copilot.Configuration {
     public sealed class CopilotOptions {
+        public string DatabasePath { get; set; } = "copilot-sessions.db";
+        public string? CopilotUrl { get; set; }
+        public string ProjectFoldersPath { get; set; } = string.Empty;
+        public int EmailChannelCapacity { get; set; } = 16;
+        public int ImapIdleTimeoutMinutes { get; set; } = 27;
         public EmailOptions Email { get; set; } = new();
     }
 

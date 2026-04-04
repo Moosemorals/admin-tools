@@ -4,12 +4,14 @@
 namespace uk.osric.copilot.Migrations {
     using Microsoft.EntityFrameworkCore;
     using Microsoft.EntityFrameworkCore.Infrastructure;
+    using Microsoft.EntityFrameworkCore.Migrations;
     using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
     using uk.osric.copilot.Data;
 
     [DbContext(typeof(CopilotDbContext))]
-    partial class CopilotDbContextModelSnapshot : ModelSnapshot {
-        protected override void BuildModel(ModelBuilder modelBuilder) {
+    [Migration("20260404000000_AddFingerprintAndEmailToSession")]
+    partial class AddFingerprintAndEmailToSession {
+        protected override void BuildTargetModel(ModelBuilder modelBuilder) {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.5");
 
@@ -34,6 +36,11 @@ namespace uk.osric.copilot.Migrations {
                     .HasColumnType("TEXT")
                     .HasColumnName("email_address");
 
+                b.Property<string>("Fingerprint")
+                    .IsRequired()
+                    .HasColumnType("TEXT")
+                    .HasColumnName("fingerprint");
+
                 b.Property<bool>("IsRevoked")
                     .HasColumnType("INTEGER")
                     .HasColumnName("is_revoked");
@@ -52,11 +59,6 @@ namespace uk.osric.copilot.Migrations {
                     .IsRequired()
                     .HasColumnType("BLOB")
                     .HasColumnName("pfx_data");
-
-                b.Property<string>("Fingerprint")
-                    .IsRequired()
-                    .HasColumnType("TEXT")
-                    .HasColumnName("fingerprint");
 
                 b.Property<string>("SubjectDn")
                     .IsRequired()
@@ -81,6 +83,10 @@ namespace uk.osric.copilot.Migrations {
                     .HasColumnType("TEXT")
                     .HasColumnName("created_at");
 
+                b.Property<string>("EmailAddress")
+                    .HasColumnType("TEXT")
+                    .HasColumnName("email_address");
+
                 b.Property<string>("LastActiveAt")
                     .IsRequired()
                     .HasColumnType("TEXT")
@@ -94,10 +100,6 @@ namespace uk.osric.copilot.Migrations {
                 b.Property<string>("WorkingDirectory")
                     .HasColumnType("TEXT")
                     .HasColumnName("working_directory");
-
-                b.Property<string>("EmailAddress")
-                    .HasColumnType("TEXT")
-                    .HasColumnName("email_address");
 
                 b.HasKey("Id");
 

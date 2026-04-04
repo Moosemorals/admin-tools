@@ -33,6 +33,7 @@ namespace uk.osric.copilot.Data {
                           v => DateTimeOffset.ParseExact(v, "O", null));
 
                 entity.Property(e => e.WorkingDirectory).HasColumnName("working_directory");
+                entity.Property(e => e.EmailAddress).HasColumnName("email_address");
             });
 
             modelBuilder.Entity<SessionMessage>(entity => {
@@ -56,7 +57,7 @@ namespace uk.osric.copilot.Data {
                 entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedOnAdd();
                 entity.Property(e => e.EmailAddress).HasColumnName("email_address").IsRequired();
                 entity.Property(e => e.SubjectDn).HasColumnName("subject_dn").IsRequired();
-                entity.Property(e => e.SerialNumber).HasColumnName("serial_number").IsRequired();
+                entity.Property(e => e.Fingerprint).HasColumnName("fingerprint").IsRequired();
                 entity.Property(e => e.PfxData).HasColumnName("pfx_data").IsRequired();
                 entity.Property(e => e.CertificateDer).HasColumnName("certificate_der").IsRequired();
                 entity.Property(e => e.NotBefore)

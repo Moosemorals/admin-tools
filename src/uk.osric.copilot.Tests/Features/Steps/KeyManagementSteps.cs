@@ -83,7 +83,7 @@ namespace uk.osric.copilot.Tests.Features.Steps {
         [Then(@"a certificate is returned with a valid serial number")]
         public void ThenACertificateIsReturnedWithAValidSerialNumber() {
             Assert.That(_lastCertificate, Is.Not.Null);
-            Assert.That(_lastCertificate!.SerialNumber, Is.Not.Null.And.Not.Empty);
+            Assert.That(_lastCertificate!.Fingerprint, Is.Not.Null.And.Not.Empty);
         }
 
         [Then(@"the certificate is not revoked")]
