@@ -35,11 +35,13 @@ namespace uk.osric.copilot.Services {
 
             if (!string.IsNullOrEmpty(inReplyTo)) {
                 message.InReplyTo = inReplyTo;
-                message.References.Add(inReplyTo);
                 if (!string.IsNullOrEmpty(references)) {
                     foreach (var r in references.Split(' ', StringSplitOptions.RemoveEmptyEntries)) {
                         message.References.Add(r);
                     }
+                }
+                if (!message.References.Contains(inReplyTo)) {
+                    message.References.Add(inReplyTo);
                 }
             }
 
