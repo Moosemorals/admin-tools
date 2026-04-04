@@ -21,10 +21,11 @@ namespace uk.osric.copilot.Services {
 
         // ── Per-session state ─────────────────────────────────────────────────
 
-        private sealed class SessionState(CopilotSession session, IDisposable subscription, string? emailAddress) {
+        private sealed class SessionState(CopilotSession session, IDisposable subscription, string? emailAddress, string? inboundMessageId) {
             public CopilotSession Session { get; } = session;
             public IDisposable Subscription { get; } = subscription;
             public string? EmailAddress { get; } = emailAddress;
+            public string? InboundMessageId { get; } = inboundMessageId;
 
             /// <summary>Pending user-input requests keyed by our generated requestId.</summary>
             public Dictionary<string, TaskCompletionSource<UserInputResponse>> PendingInputs { get; } = new();
@@ -59,7 +60,7 @@ namespace uk.osric.copilot.Services {
             var stored = await db.GetAllAsync();
             foreach (var record in stored) {
                 try {
-                    await ResumeSessionCoreAsync(record.Id, record.WorkingDirectory, record.EmailAddress, cancellationToken);
+                    await ResumeSessionCoreAsync(record.Id, record.WorkingDirectory, record.EmailAddress, cancellationToken, record.InboundMessageId);
                     logger.LogInformation("Resumed session {Id}.", record.Id);
                 } catch (Exception ex) {
                     logger.LogWarning(ex, "Could not resume session {Id}; removing from storage.", record.Id);
@@ -98,7 +99,7 @@ namespace uk.osric.copilot.Services {
         /// Creates a new Copilot session, persists it to the database, and broadcasts a
         /// <c>SessionCreated</c> event so connected clients add it to their sidebar.
         /// </summary>
-        internal async Task<Session> CreateSessionAsync(string? workingDirectory = null, string? emailAddress = null) {
+        internal async Task<Session> CreateSessionAsync(string? workingDirectory = null, string? emailAddress = null, string? inboundMessageId = null) {
             if (_client is null) {
                 throw new InvalidOperationException("Copilot client is not running.");
             }
@@ -120,10 +121,11 @@ namespace uk.osric.copilot.Services {
                 LastActiveAt = now,
                 WorkingDirectory = workingDirectory,
                 EmailAddress = emailAddress,
+                InboundMessageId = inboundMessageId,
             };
 
             await db.UpsertAsync(record);
-            RegisterSession(sessionId, session, emailAddress);
+            RegisterSession(sessionId, session, emailAddress, inboundMessageId);
 
             metrics.IncrementSessionsTotal();
             metrics.IncrementSessionsActive();
@@ -238,26 +240,34 @@ namespace uk.osric.copilot.Services {
             }
         }
 
+        /// <summary>Returns the inbound message ID for the session, or null if not set.</summary>
+        internal string? GetSessionInboundMessageId(string sessionId) {
+            lock (_sessionsLock) {
+                return _sessions.TryGetValue(sessionId, out var state) ? state.InboundMessageId : null;
+            }
+        }
+
         // ── Internals ─────────────────────────────────────────────────────────
 
         private async Task ResumeSessionCoreAsync(
                 string sessionId,
                 string? workingDirectory,
                 string? emailAddress,
-                CancellationToken cancellationToken) {
+                CancellationToken cancellationToken,
+                string? inboundMessageId = null) {
             var session = await _client!.ResumeSessionAsync(sessionId, new ResumeSessionConfig {
                 OnPermissionRequest = PermissionHandler.ApproveAll,
                 OnUserInputRequest = BuildUserInputHandler(sessionId),
                 WorkingDirectory = workingDirectory,
             }, cancellationToken);
 
-            RegisterSession(sessionId, session, emailAddress);
+            RegisterSession(sessionId, session, emailAddress, inboundMessageId);
         }
 
-        private void RegisterSession(string sessionId, CopilotSession session, string? emailAddress = null) {
+        private void RegisterSession(string sessionId, CopilotSession session, string? emailAddress = null, string? inboundMessageId = null) {
             var sub = session.On(evt => OnSessionEvent(sessionId, evt));
             lock (_sessionsLock) {
-                _sessions[sessionId] = new SessionState(session, sub, emailAddress);
+                _sessions[sessionId] = new SessionState(session, sub, emailAddress, inboundMessageId);
             }
         }
 
@@ -292,7 +302,7 @@ namespace uk.osric.copilot.Services {
                         state.EmailAddress,
                         "Input required",
                         $"Copilot is asking: {request.Question}\n\n(Reply via the web UI at /sessions/{sessionId})",
-                        CancellationToken.None);
+                        cancellationToken: CancellationToken.None);
                 }
 
                 try {

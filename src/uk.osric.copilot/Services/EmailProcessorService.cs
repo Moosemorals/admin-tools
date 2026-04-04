@@ -4,8 +4,14 @@ namespace uk.osric.copilot.Services {
     using System.Text;
     using System.Text.Json;
     using System.Threading.Channels;
+    using MailKit;
+    using MailKit.Net.Imap;
+    using MailKit.Search;
+    using MailKit.Security;
+    using Microsoft.Extensions.Options;
     using MimeKit;
     using MimeKit.Cryptography;
+    using uk.osric.copilot.Configuration;
 
     /// <summary>
     /// Background service that drains the inbound email channel and processes each message:
@@ -17,7 +23,7 @@ namespace uk.osric.copilot.Services {
             CopilotService copilot,
             SmtpSenderService smtp,
             EmailMetrics metrics,
-            IConfiguration config,
+            IOptions<CopilotOptions> copilotOptions,
             ILogger<EmailProcessorService> logger) : BackgroundService {
 
         private static readonly ActivitySource _activitySource = new("uk.osric.copilot");
@@ -108,7 +114,7 @@ namespace uk.osric.copilot.Services {
             var session = sessions.FirstOrDefault(s =>
                 string.Equals(s.WorkingDirectory, projectDir, StringComparison.OrdinalIgnoreCase));
             if (session is null) {
-                session = await copilot.CreateSessionAsync(projectDir, certRecord.EmailAddress);
+                session = await copilot.CreateSessionAsync(projectDir, certRecord.EmailAddress, message.MessageId);
             }
 
             var body = ExtractTextBody(message);
@@ -121,7 +127,7 @@ namespace uk.osric.copilot.Services {
                 string to,
                 string originalSubject,
                 CancellationToken cancellationToken) {
-            var root = config.GetValue<string>("ProjectFoldersPath") ?? string.Empty;
+            var root = copilotOptions.Value.ProjectFoldersPath;
             var projects = string.IsNullOrWhiteSpace(root) || !Directory.Exists(root)
                 ? "(none configured)"
                 : string.Join("\n", Directory.EnumerateDirectories(root)
@@ -131,14 +137,14 @@ namespace uk.osric.copilot.Services {
                 to,
                 $"Re: {StripReplyPrefixes(originalSubject)}",
                 $"Subject did not match a known project.\n\nKnown projects:\n{projects}",
-                cancellationToken);
+                cancellationToken: cancellationToken);
         }
 
         private string? FindProjectDirectory(string projectName) {
             if (string.IsNullOrWhiteSpace(projectName)) {
                 return null;
             }
-            var root = config.GetValue<string>("ProjectFoldersPath") ?? string.Empty;
+            var root = copilotOptions.Value.ProjectFoldersPath;
             if (string.IsNullOrWhiteSpace(root) || !Directory.Exists(root)) {
                 return null;
             }

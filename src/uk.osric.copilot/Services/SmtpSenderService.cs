@@ -18,6 +18,8 @@ namespace uk.osric.copilot.Services {
                 string to,
                 string subject,
                 string body,
+                string? inReplyTo = null,
+                string? references = null,
                 CancellationToken cancellationToken = default) {
             using var activity = _activitySource.StartActivity("smtp.send");
             activity?.SetTag("messaging.system", "smtp");
@@ -30,6 +32,16 @@ namespace uk.osric.copilot.Services {
             message.From.Add(MailboxAddress.Parse(fromAddress));
             message.To.Add(MailboxAddress.Parse(to));
             message.Subject = subject;
+
+            if (!string.IsNullOrEmpty(inReplyTo)) {
+                message.InReplyTo = inReplyTo;
+                message.References.Add(inReplyTo);
+                if (!string.IsNullOrEmpty(references)) {
+                    foreach (var r in references.Split(' ', StringSplitOptions.RemoveEmptyEntries)) {
+                        message.References.Add(r);
+                    }
+                }
+            }
 
             MimeEntity bodyEntity = new TextPart("plain") { Text = body };
 

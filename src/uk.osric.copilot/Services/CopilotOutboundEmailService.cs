@@ -2,6 +2,10 @@ namespace uk.osric.copilot.Services {
     using System.Text;
     using System.Text.Json;
 
+    /// <summary>
+    /// Monitors Copilot SSE events for sessions that were initiated via email
+    /// and sends reply emails when the session reaches a terminal state.
+    /// </summary>
     public sealed class CopilotOutboundEmailService(
             SseBroadcaster broadcaster,
             CopilotService copilot,
@@ -13,15 +17,7 @@ namespace uk.osric.copilot.Services {
             var buffers = new Dictionary<string, StringBuilder>();
             try {
                 while (!stoppingToken.IsCancellationRequested) {
-                    bool hasData;
-                    try {
-                        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
-                        timeoutCts.CancelAfter(TimeSpan.FromSeconds(30));
-                        hasData = await reader.WaitToReadAsync(timeoutCts.Token);
-                    } catch (OperationCanceledException) when (!stoppingToken.IsCancellationRequested) {
-                        continue;
-                    }
-                    if (!hasData) {
+                    if (!await reader.WaitToReadAsync(stoppingToken)) {
                         break;
                     }
                     while (reader.TryRead(out var msg)) {
@@ -29,51 +25,53 @@ namespace uk.osric.copilot.Services {
                             continue;
                         }
                         try {
-                            using var doc = JsonDocument.Parse(msg.Json);
-                            var root = doc.RootElement;
-                            if (!root.TryGetProperty("_sessionId", out var sidProp)) {
-                                continue;
-                            }
-                            var sessionId = sidProp.GetString();
-                            if (sessionId is null) {
-                                continue;
-                            }
-                            if (!root.TryGetProperty("_eventType", out var etProp)) {
-                                continue;
-                            }
-                            var eventType = etProp.GetString();
-                            if (eventType == "ProgressMessage" &&
-                                root.TryGetProperty("text", out var textProp)) {
-                                if (!buffers.ContainsKey(sessionId)) {
-                                    buffers[sessionId] = new StringBuilder();
-                                }
-                                buffers[sessionId].Append(textProp.GetString());
-                            }
-                            var isTerminal = eventType?.EndsWith("Complete", StringComparison.Ordinal) == true
-                                || eventType is "CompletedMessage";
-                            if (isTerminal) {
-                                var emailAddress = copilot.GetSessionEmailAddress(sessionId);
-                                if (emailAddress is not null) {
-                                    var responseText = buffers.TryGetValue(sessionId, out var sb) && sb.Length > 0
-                                        ? sb.ToString()
-                                        : "Request completed.";
-                                    buffers.Remove(sessionId);
-                                    _ = TrySendReplyAsync(emailAddress, responseText, stoppingToken);
-                                } else {
-                                    buffers.Remove(sessionId);
-                                }
-                            }
+                            ProcessEvent(msg.Json, buffers, stoppingToken);
                         } catch (JsonException) { }
                     }
                 }
+            } catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) {
+                // normal shutdown
             } finally {
                 broadcaster.Unsubscribe(reader);
             }
         }
 
-        private async Task TrySendReplyAsync(string emailAddress, string responseText, CancellationToken cancellationToken) {
+        private void ProcessEvent(string json, Dictionary<string, StringBuilder> buffers, CancellationToken cancellationToken) {
+            using var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
+            if (!root.TryGetProperty("_sessionId", out var sidProp) || !(sidProp.GetString() is string sessionId)) {
+                return;
+            }
+            if (!root.TryGetProperty("_eventType", out var etProp)) {
+                return;
+            }
+            var eventType = etProp.GetString();
+            if (eventType == "ProgressMessage" && root.TryGetProperty("text", out var textProp)) {
+                buffers.TryAdd(sessionId, new StringBuilder());
+                buffers[sessionId].Append(textProp.GetString());
+            }
+            if (IsTerminal(eventType)) {
+                var emailAddress = copilot.GetSessionEmailAddress(sessionId);
+                if (emailAddress is not null) {
+                    var inReplyTo = copilot.GetSessionInboundMessageId(sessionId);
+                    var responseText = buffers.TryGetValue(sessionId, out var sb) && sb.Length > 0
+                        ? sb.ToString()
+                        : "Request completed.";
+                    buffers.Remove(sessionId);
+                    _ = TrySendReplyAsync(emailAddress, responseText, inReplyTo, cancellationToken);
+                } else {
+                    buffers.Remove(sessionId);
+                }
+            }
+        }
+
+        private static bool IsTerminal(string? eventType) =>
+            eventType?.EndsWith("Complete", StringComparison.Ordinal) == true
+            || eventType is "CompletedMessage";
+
+        private async Task TrySendReplyAsync(string emailAddress, string responseText, string? inReplyTo, CancellationToken cancellationToken) {
             try {
-                await smtp.SendReplyAsync(emailAddress, "Copilot response", responseText, cancellationToken);
+                await smtp.SendReplyAsync(emailAddress, "Copilot response", responseText, inReplyTo, cancellationToken: cancellationToken);
             } catch (Exception ex) {
                 logger.LogError(ex, "Failed to send Copilot response email to {Email}.", emailAddress);
             }

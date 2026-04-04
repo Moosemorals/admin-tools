@@ -9,8 +9,8 @@ namespace uk.osric.copilot.Migrations {
     using uk.osric.copilot.Data;
 
     [DbContext(typeof(CopilotDbContext))]
-    [Migration("20260403220000_AddEmailCertificates")]
-    partial class AddEmailCertificates {
+    [Migration("20260404010000_InitialSchema")]
+    partial class InitialSchema {
         protected override void BuildTargetModel(ModelBuilder modelBuilder) {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.5");
@@ -36,6 +36,11 @@ namespace uk.osric.copilot.Migrations {
                     .HasColumnType("TEXT")
                     .HasColumnName("email_address");
 
+                b.Property<string>("Fingerprint")
+                    .IsRequired()
+                    .HasColumnType("TEXT")
+                    .HasColumnName("fingerprint");
+
                 b.Property<bool>("IsRevoked")
                     .HasColumnType("INTEGER")
                     .HasColumnName("is_revoked");
@@ -54,11 +59,6 @@ namespace uk.osric.copilot.Migrations {
                     .IsRequired()
                     .HasColumnType("BLOB")
                     .HasColumnName("pfx_data");
-
-                b.Property<string>("SerialNumber")
-                    .IsRequired()
-                    .HasColumnType("TEXT")
-                    .HasColumnName("serial_number");
 
                 b.Property<string>("SubjectDn")
                     .IsRequired()
@@ -82,6 +82,14 @@ namespace uk.osric.copilot.Migrations {
                     .IsRequired()
                     .HasColumnType("TEXT")
                     .HasColumnName("created_at");
+
+                b.Property<string>("EmailAddress")
+                    .HasColumnType("TEXT")
+                    .HasColumnName("email_address");
+
+                b.Property<string>("InboundMessageId")
+                    .HasColumnType("TEXT")
+                    .HasColumnName("inbound_message_id");
 
                 b.Property<string>("LastActiveAt")
                     .IsRequired()

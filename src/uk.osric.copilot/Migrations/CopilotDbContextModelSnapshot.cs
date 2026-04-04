@@ -99,6 +99,10 @@ namespace uk.osric.copilot.Migrations {
                     .HasColumnType("TEXT")
                     .HasColumnName("email_address");
 
+                b.Property<string>("InboundMessageId")
+                    .HasColumnType("TEXT")
+                    .HasColumnName("inbound_message_id");
+
                 b.HasKey("Id");
 
                 b.ToTable("sessions", (string)null);

@@ -3,13 +3,12 @@ namespace uk.osric.copilot.Configuration {
         public string DatabasePath { get; set; } = "copilot-sessions.db";
         public string? CopilotUrl { get; set; }
         public string ProjectFoldersPath { get; set; } = string.Empty;
-        public int EmailChannelCapacity { get; set; } = 16;
-        public int ImapIdleTimeoutMinutes { get; set; } = 27;
         public EmailOptions Email { get; set; } = new();
     }
 
     public sealed class EmailOptions {
         public string FromAddress { get; set; } = string.Empty;
+        public int ChannelCapacity { get; set; } = 16;
         public ImapOptions Imap { get; set; } = new();
         public SmtpOptions Smtp { get; set; } = new();
     }
@@ -21,6 +20,7 @@ namespace uk.osric.copilot.Configuration {
         public string Password { get; set; } = string.Empty;
         /// <summary>"Always", "StartTls", or null for auto-detect.</summary>
         public string? Tls { get; set; }
+        public int IdleTimeoutMinutes { get; set; } = 27;
     }
 
     public sealed class SmtpOptions {

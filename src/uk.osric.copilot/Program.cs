@@ -1,4 +1,6 @@
 namespace uk.osric.copilot.Web {
+    using Microsoft.Extensions.Options;
+    using uk.osric.copilot.Configuration;
     using uk.osric.copilot.Infrastructure;
     using uk.osric.copilot.Services;
 
@@ -13,8 +15,9 @@ namespace uk.osric.copilot.Web {
             await app.InitialiseDatabaseAsync();
 
             var metrics = app.Services.GetRequiredService<CopilotMetrics>();
+            var copilotOpts = app.Services.GetRequiredService<IOptions<CopilotOptions>>().Value;
             metrics.SetProjectCountCallback(() => {
-                var root = app.Configuration.GetValue<string>("ProjectFoldersPath") ?? string.Empty;
+                var root = copilotOpts.ProjectFoldersPath;
                 if (string.IsNullOrWhiteSpace(root) || !Directory.Exists(root)) {
                     return 0;
                 }

@@ -34,6 +34,7 @@ namespace uk.osric.copilot.Data {
 
                 entity.Property(e => e.WorkingDirectory).HasColumnName("working_directory");
                 entity.Property(e => e.EmailAddress).HasColumnName("email_address");
+                entity.Property(e => e.InboundMessageId).HasColumnName("inbound_message_id");
             });
 
             modelBuilder.Entity<SessionMessage>(entity => {

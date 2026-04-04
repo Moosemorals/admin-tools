@@ -2,19 +2,18 @@ namespace uk.osric.copilot.Services {
     using System.Threading.Channels;
     using MailKit;
     using MailKit.Net.Imap;
+    using MailKit.Search;
     using MailKit.Security;
     using Microsoft.Extensions.Options;
     using MimeKit;
     using uk.osric.copilot.Configuration;
 
-    /// <summary>
-    /// Background service that connects to the configured IMAP server, issues IDLE,
-    /// and enqueues new messages to a shared <see cref="Channel{MimeMessage}"/>.
-    /// </summary>
     public sealed class ImapListenerService(
             IOptions<CopilotOptions> options,
             ChannelWriter<MimeMessage> messageChannel,
             ILogger<ImapListenerService> logger) : BackgroundService {
+
+        private uint _lastSeenUid;
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken) {
             var imap = options.Value.Email.Imap;
@@ -26,6 +25,9 @@ namespace uk.osric.copilot.Services {
             while (!stoppingToken.IsCancellationRequested) {
                 try {
                     await RunImapLoopAsync(imap, stoppingToken);
+                } catch (InvalidOperationException ex) when (ex.Message.Contains("IDLE")) {
+                    logger.LogError(ex, "IMAP server does not support IDLE; email subsystem permanently disabled.");
+                    return;
                 } catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) {
                     break;
                 } catch (Exception ex) {
@@ -36,21 +38,27 @@ namespace uk.osric.copilot.Services {
         }
 
         private async Task RunImapLoopAsync(ImapOptions imap, CancellationToken stoppingToken) {
+            var ourAddress = options.Value.Email.FromAddress;
+            var idleTimeoutMinutes = imap.IdleTimeoutMinutes > 0 ? imap.IdleTimeoutMinutes : 27;
+
             using var client = new ImapClient();
             await client.ConnectAsync(imap.Host, imap.Port, GetImapSocketOptions(imap), stoppingToken);
             await client.AuthenticateAsync(imap.Username, imap.Password, stoppingToken);
-            await client.Inbox.OpenAsync(FolderAccess.ReadOnly, stoppingToken);
 
-            logger.LogInformation("IMAP connected to {Host}. INBOX has {Count} messages.", imap.Host, client.Inbox.Count);
-
+            // Check IDLE support as early as possible — gate the whole subsystem on it
             if (!client.Capabilities.HasFlag(ImapCapabilities.Idle)) {
                 throw new InvalidOperationException("IMAP server does not support IDLE. A server with IDLE support is required.");
             }
 
-            var lastCount = client.Inbox.Count;
-            var idleTimeoutMinutes = options.Value.ImapIdleTimeoutMinutes > 0
-                ? options.Value.ImapIdleTimeoutMinutes
-                : 27;
+            await client.Inbox.OpenAsync(FolderAccess.ReadOnly, stoppingToken);
+            logger.LogInformation("IMAP connected to {Host}.", imap.Host);
+
+            // Establish baseline: don't re-process existing messages on startup
+            if (_lastSeenUid == 0) {
+                var existingUids = await client.Inbox.SearchAsync(SearchQuery.All, stoppingToken);
+                _lastSeenUid = existingUids.Count > 0 ? existingUids[existingUids.Count - 1].Id : 0;
+                logger.LogDebug("IMAP baseline UID set to {Uid}.", _lastSeenUid);
+            }
 
             while (!stoppingToken.IsCancellationRequested) {
                 using var done = new CancellationTokenSource(TimeSpan.FromMinutes(idleTimeoutMinutes));
@@ -64,21 +72,37 @@ namespace uk.osric.copilot.Services {
                     client.Inbox.CountChanged -= onCountChanged;
                 }
 
-                var currentCount = client.Inbox.Count;
-                for (var i = lastCount; i < currentCount; i++) {
-                    try {
-                        var message = await client.Inbox.GetMessageAsync(i, stoppingToken);
-                        await messageChannel.WriteAsync(message, stoppingToken);
-                        logger.LogDebug("Enqueued INBOX message at index {Index}.", i);
-                    } catch (Exception ex) when (!stoppingToken.IsCancellationRequested) {
-                        logger.LogWarning(ex, "Failed to fetch message at index {Index}.", i);
-                    }
-                }
-
-                lastCount = currentCount;
+                await FetchNewMessagesAsync(client, ourAddress, stoppingToken);
             }
 
             await client.DisconnectAsync(quit: true, stoppingToken);
+        }
+
+        private async Task FetchNewMessagesAsync(ImapClient client, string ourAddress, CancellationToken stoppingToken) {
+            // Search for messages addressed to us (be a good neighbour in shared inboxes)
+            var toUs = string.IsNullOrWhiteSpace(ourAddress)
+                ? SearchQuery.All
+                : SearchQuery.Or(SearchQuery.ToContains(ourAddress), SearchQuery.CcContains(ourAddress));
+
+            var matchingUids = await client.Inbox.SearchAsync(toUs, stoppingToken);
+            var newUids = matchingUids
+                .Where(uid => uid.Id > _lastSeenUid)
+                .OrderBy(uid => uid.Id)
+                .ToList();
+
+            foreach (var uid in newUids) {
+                try {
+                    var message = await client.Inbox.GetMessageAsync(uid, stoppingToken);
+                    if (messageChannel.TryWrite(message)) {
+                        logger.LogDebug("Enqueued INBOX message UID {Uid}.", uid.Id);
+                    } else {
+                        logger.LogWarning("Email channel full; dropping message UID {Uid}.", uid.Id);
+                    }
+                } catch (Exception ex) when (!stoppingToken.IsCancellationRequested) {
+                    logger.LogWarning(ex, "Failed to fetch message UID {Uid}.", uid.Id);
+                }
+                _lastSeenUid = uid.Id;
+            }
         }
 
         private static SecureSocketOptions GetImapSocketOptions(ImapOptions imap) {

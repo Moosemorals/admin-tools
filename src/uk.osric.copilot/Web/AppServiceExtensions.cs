@@ -19,11 +19,13 @@ namespace uk.osric.copilot.Web {
         /// <see cref="WebApplicationBuilder.Build"/>.
         /// </summary>
         internal static WebApplicationBuilder AddCopilotServices(this WebApplicationBuilder builder) {
-            var dbPath = builder.Configuration.GetValue<string>("DatabasePath") ?? "copilot-sessions.db";
+            var copilotOpts = builder.Configuration.GetSection("Copilot").Get<CopilotOptions>() ?? new CopilotOptions();
+            var dbPath = copilotOpts.DatabasePath;
+            var copilotUrl = copilotOpts.CopilotUrl;
+
             builder.Services.AddDbContextFactory<CopilotDbContext>(opts =>
                 opts.UseSqlite($"Data Source={dbPath}"));
 
-            var copilotUrl = builder.Configuration.GetValue<string>("CopilotUrl");
             builder.Services.AddSingleton<SseBroadcaster>();
             builder.Services.AddSingleton<SessionRepository>();
 
@@ -47,9 +49,7 @@ namespace uk.osric.copilot.Web {
             // Register as both the concrete type (for direct resolution) and the hosted service.
             builder.Services.AddHostedService(sp => sp.GetRequiredService<CopilotService>());
 
-            var channelCapacity = builder.Configuration
-                .GetSection("Copilot")
-                .GetValue("EmailChannelCapacity", 16);
+            var channelCapacity = copilotOpts.Email.ChannelCapacity;
             var emailChannel = Channel.CreateBounded<MimeMessage>(new BoundedChannelOptions(channelCapacity) {
                 SingleReader = true,
                 FullMode = BoundedChannelFullMode.DropWrite,
@@ -85,7 +85,7 @@ namespace uk.osric.copilot.Web {
                     t.AddAspNetCoreInstrumentation();
                     t.AddHttpClientInstrumentation();
                     t.AddSource("uk.osric.copilot");
-                    t.AddSource("Microsoft.EntityFrameworkCore");
+                    t.AddEntityFrameworkCoreInstrumentation();
                     if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT"))) {
                         t.AddOtlpExporter();
                     }
