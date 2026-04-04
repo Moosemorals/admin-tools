@@ -7,6 +7,7 @@ namespace uk.osric.copilot.Tests.Unit {
     using uk.osric.copilot.Services;
 
     [TestFixture]
+    [FixtureLifeCycle(LifeCycle.InstancePerTestCase)]
     public class EmailMetricsTests {
         private List<(string Name, long Value, KeyValuePair<string, object?>[] Tags)> _measurements = null!;
         private MeterListener _listener = null!;
@@ -19,7 +20,7 @@ namespace uk.osric.copilot.Tests.Unit {
 
             _listener = new MeterListener();
             _listener.InstrumentPublished = (instrument, l) => {
-                if (instrument.Meter.Name == "uk.osric.copilot.email")
+                if (ReferenceEquals(instrument.Meter, _sut.Meter))
                     l.EnableMeasurementEvents(instrument);
             };
             _listener.SetMeasurementEventCallback<long>((instrument, value, tags, _) => {

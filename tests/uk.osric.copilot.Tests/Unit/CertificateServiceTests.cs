@@ -8,6 +8,7 @@ namespace uk.osric.copilot.Tests.Unit {
     using uk.osric.copilot.Tests.Helpers;
 
     [TestFixture]
+    [FixtureLifeCycle(LifeCycle.InstancePerTestCase)]
     public class CertificateServiceTests {
         private TestDbContextFactory _factory = null!;
         private CertificateService _sut = null!;
