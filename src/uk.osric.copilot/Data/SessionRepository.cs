@@ -8,6 +8,12 @@ namespace uk.osric.copilot.Data {
     /// per operation, which is safe for concurrent access from multiple async callers.
     /// </summary>
     public sealed class SessionRepository(IDbContextFactory<CopilotDbContext> factory) {
+        /// <summary>Returns a single session by id, or <c>null</c> if not found.</summary>
+        internal async Task<Session?> GetAsync(string id) {
+            await using var db = await factory.CreateDbContextAsync();
+            return await db.Sessions.FindAsync(id);
+        }
+
         /// <summary>Returns all sessions ordered by most-recently active.</summary>
         internal async Task<IReadOnlyList<Session>> GetAllAsync() {
             await using var db = await factory.CreateDbContextAsync();

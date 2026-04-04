@@ -43,35 +43,17 @@ namespace uk.osric.copilot.Services {
         };
 
         private CopilotClient? _client;
+        private readonly SemaphoreSlim _startLock = new(1, 1);
         private readonly Dictionary<string, SessionState> _sessions = new();
         private readonly Lock _sessionsLock = new();
 
         // ── IHostedService ────────────────────────────────────────────────────
 
-        public async Task StartAsync(CancellationToken cancellationToken) {
-            logger.LogInformation("Starting Copilot client…");
-            var options = string.IsNullOrWhiteSpace(copilotUrl)
-                ? new CopilotClientOptions()
-                : new CopilotClientOptions { CliUrl = copilotUrl };
-            _client = new CopilotClient(options);
-            await _client.StartAsync(cancellationToken);
-
-            // Resume all sessions persisted from a previous run so the client can pick up
-            // where it left off after a restart.
-            var stored = await db.GetAllAsync();
-            foreach (var record in stored) {
-                try {
-                    await ResumeSessionCoreAsync(record.Id, record.WorkingDirectory, record.EmailAddress, cancellationToken, record.InboundMessageId);
-                    logger.LogInformation("Resumed session {Id}.", record.Id);
-                } catch (Exception ex) {
-                    logger.LogWarning(ex, "Could not resume session {Id}; removing from storage.", record.Id);
-                    await db.DeleteAsync(record.Id);
-                }
-            }
-
-            logger.LogInformation("Copilot service ready.");
-            // ServiceReady is a synthetic event with no session — not persisted.
+        public Task StartAsync(CancellationToken cancellationToken) {
+            logger.LogInformation("Copilot service ready (client will start on first session).");
+            // ServiceReady is a synthetic event — not persisted.
             broadcaster.Broadcast(new SseMessage(null, BuildEventJson("ServiceReady", new { })));
+            return Task.CompletedTask;
         }
 
         public async Task StopAsync(CancellationToken cancellationToken) {
@@ -93,20 +75,17 @@ namespace uk.osric.copilot.Services {
                 await _client.StopAsync();
             }
         }
-
         // ── Session management ────────────────────────────────────────────────
 
         /// <summary>
         /// Creates a new Copilot session, persists it to the database, and broadcasts a
         /// <c>SessionCreated</c> event so connected clients add it to their sidebar.
+        /// Starts the Copilot client on first call.
         /// </summary>
         internal async Task<Session> CreateSessionAsync(string? workingDirectory = null, string? emailAddress = null, string? inboundMessageId = null) {
-            if (_client is null) {
-                throw new InvalidOperationException("Copilot client is not running.");
-            }
-
+            await EnsureClientStartedAsync();
             var sessionId = Guid.NewGuid().ToString("N");
-            var session = await _client.CreateSessionAsync(new SessionConfig {
+            var session = await _client!.CreateSessionAsync(new SessionConfig {
                 SessionId = sessionId,
                 OnPermissionRequest = PermissionHandler.ApproveAll,
                 OnUserInputRequest = BuildUserInputHandler(sessionId),
@@ -172,10 +151,12 @@ namespace uk.osric.copilot.Services {
         /// <summary>
         /// Stores the user's prompt as a <c>UserMessage</c> event, then sends it to Copilot.
         /// The message is stored first so the history is consistent even if the send fails.
+        /// Resumes the session from the database if it is not currently active in memory.
         /// </summary>
         internal async Task<string> SendAsync(string sessionId, string prompt) {
             using var activity = CopilotTelemetry.ActivitySource.StartActivity("copilot.send");
             activity?.SetTag("session.id", sessionId);
+            await EnsureSessionActiveAsync(sessionId);
             var state = GetState(sessionId);
             await StoreAndBroadcastAsync("UserMessage", new { prompt }, sessionId: sessionId);
             var msgId = await state.Session.SendAsync(new MessageOptions { Prompt = prompt });
@@ -196,6 +177,8 @@ namespace uk.osric.copilot.Services {
                 await state.Session.DisposeAsync();
             }
 
+            // Only ask the SDK to delete if the client has been started; the session data
+            // will be cleaned up the next time the client starts, or stays dormant harmlessly.
             if (_client is not null) {
                 await _client.DeleteSessionAsync(sessionId);
             }
@@ -263,6 +246,77 @@ namespace uk.osric.copilot.Services {
             }, cancellationToken);
 
             RegisterSession(sessionId, session, emailAddress, inboundMessageId);
+        }
+
+        /// <summary>
+        /// Starts the <see cref="CopilotClient"/> the first time it is needed.
+        /// Subsequent calls return immediately.  Thread-safe via <see cref="_startLock"/>.
+        /// </summary>
+        private async Task EnsureClientStartedAsync(CancellationToken cancellationToken = default) {
+            if (_client is not null) {
+                return;
+            }
+
+            await _startLock.WaitAsync(cancellationToken);
+            try {
+                await StartClientCoreAsync(cancellationToken);
+            } finally {
+                _startLock.Release();
+            }
+        }
+
+        /// <summary>
+        /// Inner client-start logic. Must only be called while <see cref="_startLock"/> is held.
+        /// </summary>
+        private async Task StartClientCoreAsync(CancellationToken cancellationToken = default) {
+            if (_client is not null) {
+                return;
+            }
+
+            logger.LogInformation("Starting Copilot client…");
+            var options = string.IsNullOrWhiteSpace(copilotUrl)
+                ? new CopilotClientOptions()
+                : new CopilotClientOptions { CliUrl = copilotUrl };
+            _client = new CopilotClient(options);
+            await _client.StartAsync(cancellationToken);
+            logger.LogInformation("Copilot client started.");
+        }
+
+        /// <summary>
+        /// Ensures the session identified by <paramref name="sessionId"/> is active in memory.
+        /// If it is not, looks it up in the database and resumes it via the SDK.
+        /// Starts the client first if needed.
+        /// Throws <see cref="KeyNotFoundException"/> if the session is not found in the database.
+        /// </summary>
+        private async Task EnsureSessionActiveAsync(string sessionId) {
+            lock (_sessionsLock) {
+                if (_sessions.ContainsKey(sessionId)) {
+                    return;
+                }
+            }
+
+            // Serialise resume attempts for the same (or concurrent different) sessions through
+            // the same lock used to start the client, preventing duplicate resume calls.
+            await _startLock.WaitAsync();
+            try {
+                lock (_sessionsLock) {
+                    if (_sessions.ContainsKey(sessionId)) {
+                        return;
+                    }
+                }
+
+                var record = await db.GetAsync(sessionId)
+                    ?? throw new KeyNotFoundException($"Session '{sessionId}' not found.");
+
+                await StartClientCoreAsync();
+
+                await ResumeSessionCoreAsync(
+                    record.Id, record.WorkingDirectory, record.EmailAddress,
+                    CancellationToken.None, record.InboundMessageId);
+                logger.LogInformation("Lazily resumed session {Id}.", sessionId);
+            } finally {
+                _startLock.Release();
+            }
         }
 
         private void RegisterSession(string sessionId, CopilotSession session, string? emailAddress = null, string? inboundMessageId = null) {
