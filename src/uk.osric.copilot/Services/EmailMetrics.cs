@@ -7,6 +7,8 @@ namespace uk.osric.copilot.Services {
     public sealed class EmailMetrics : IDisposable {
         private readonly Meter _meter = new("uk.osric.copilot.email");
 
+        internal Meter Meter => _meter;
+
         private readonly Counter<long> _received;
         private readonly Counter<long> _dropped;
         private readonly Counter<long> _replied;

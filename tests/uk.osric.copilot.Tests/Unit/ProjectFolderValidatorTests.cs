@@ -6,6 +6,7 @@ namespace uk.osric.copilot.Tests.Unit {
     using uk.osric.copilot.Infrastructure;
 
     [TestFixture]
+    [FixtureLifeCycle(LifeCycle.InstancePerTestCase)]
     public class ProjectFolderValidatorTests {
         private string _tempRoot = null!;
         private string _projectDir = null!;
