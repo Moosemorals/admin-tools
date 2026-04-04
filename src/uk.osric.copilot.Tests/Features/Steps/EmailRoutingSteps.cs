@@ -256,9 +256,7 @@ namespace uk.osric.copilot.Tests.Features.Steps {
         }
 
         public async ValueTask DisposeAsync() {
-            _listener.Dispose();
-            _metrics.Dispose();
-            await _factory.DisposeAsync();
+            await AfterScenario();
         }
     }
 }

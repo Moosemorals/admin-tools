@@ -1,6 +1,8 @@
 namespace uk.osric.copilot.Web {
     using Microsoft.AspNetCore.Mvc;
     using Microsoft.AspNetCore.Mvc.ModelBinding;
+    using Microsoft.Extensions.Options;
+    using uk.osric.copilot.Configuration;
     using uk.osric.copilot.Infrastructure;
     using uk.osric.copilot.Models;
     using uk.osric.copilot.Services;
@@ -14,7 +16,7 @@ namespace uk.osric.copilot.Web {
     public sealed class CopilotController(
             CopilotService copilot,
             SseBroadcaster broadcaster,
-            IConfiguration config) : ControllerBase {
+            IOptions<CopilotOptions> options) : ControllerBase {
 
         // ── SSE stream ──────────────────────────────────────────────────────────
 
@@ -104,13 +106,7 @@ namespace uk.osric.copilot.Web {
         /// </summary>
         [HttpGet("/project-folders")]
         public IActionResult GetProjectFolders() {
-            var root = config.GetValue<string>("ProjectFoldersPath") ?? string.Empty;
-            if (string.IsNullOrWhiteSpace(root) || !Directory.Exists(root)) {
-                return Ok(Array.Empty<object>());
-            }
-
-            var folders = Directory.EnumerateDirectories(root)
-                .Where(dir => Directory.Exists(Path.Combine(dir, ".git")))
+            var folders = ProjectFolderHelper.EnumerateGitRepositories(options.Value.ProjectFoldersPath)
                 .OrderBy(dir => dir)
                 .Select(dir => new { name = Path.GetFileName(dir), path = dir })
                 .ToArray();
@@ -136,7 +132,8 @@ namespace uk.osric.copilot.Web {
                 [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] CreateSessionRequest? body) {
             string? workingDirectory = null;
             if (!string.IsNullOrWhiteSpace(body?.WorkingDirectory)) {
-                var validated = ProjectFolderValidator.Validate(config, body.WorkingDirectory);
+                var validated = ProjectFolderValidator.Validate(
+                    options.Value.ProjectFoldersPath, body.WorkingDirectory);
                 if (validated is null) {
                     return BadRequest("The supplied working directory is not a valid project folder.");
                 }

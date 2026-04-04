@@ -1,13 +1,8 @@
 namespace uk.osric.copilot.Services {
-    using System.Diagnostics;
+    using uk.osric.copilot.Infrastructure;
     using System.Security.Cryptography.X509Certificates;
-    using System.Text;
-    using System.Text.Json;
     using System.Threading.Channels;
     using MailKit;
-    using MailKit.Net.Imap;
-    using MailKit.Search;
-    using MailKit.Security;
     using Microsoft.Extensions.Options;
     using MimeKit;
     using MimeKit.Cryptography;
@@ -26,7 +21,7 @@ namespace uk.osric.copilot.Services {
             IOptions<CopilotOptions> copilotOptions,
             ILogger<EmailProcessorService> logger) : BackgroundService {
 
-        private static readonly ActivitySource _activitySource = new("uk.osric.copilot");
+        
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken) {
             await foreach (var message in messageChannel.ReadAllAsync(stoppingToken)) {
@@ -43,7 +38,7 @@ namespace uk.osric.copilot.Services {
         private async Task ProcessMessageAsync(MimeMessage message, CancellationToken stoppingToken) {
             metrics.RecordReceived();
 
-            using var activity = _activitySource.StartActivity("email.process");
+            using var activity = CopilotTelemetry.ActivitySource.StartActivity("email.process");
             activity?.SetTag("messaging.system", "imap");
             activity?.SetTag("messaging.operation.type", "receive");
             activity?.SetTag("messaging.destination.name", "INBOX");
@@ -127,12 +122,10 @@ namespace uk.osric.copilot.Services {
                 string to,
                 string originalSubject,
                 CancellationToken cancellationToken) {
-            var root = copilotOptions.Value.ProjectFoldersPath;
-            var projects = string.IsNullOrWhiteSpace(root) || !Directory.Exists(root)
-                ? "(none configured)"
-                : string.Join("\n", Directory.EnumerateDirectories(root)
-                    .Where(d => Directory.Exists(Path.Combine(d, ".git")))
-                    .Select(Path.GetFileName));
+            var repos = ProjectFolderHelper.EnumerateGitRepositories(copilotOptions.Value.ProjectFoldersPath).ToList();
+            var projects = repos.Count > 0
+                ? string.Join("\n", repos.Select(Path.GetFileName))
+                : "(none configured)";
             await smtp.SendReplyAsync(
                 to,
                 $"Re: {StripReplyPrefixes(originalSubject)}",
@@ -144,14 +137,8 @@ namespace uk.osric.copilot.Services {
             if (string.IsNullOrWhiteSpace(projectName)) {
                 return null;
             }
-            var root = copilotOptions.Value.ProjectFoldersPath;
-            if (string.IsNullOrWhiteSpace(root) || !Directory.Exists(root)) {
-                return null;
-            }
-            return Directory.EnumerateDirectories(root)
-                .FirstOrDefault(dir =>
-                    string.Equals(Path.GetFileName(dir), projectName, StringComparison.OrdinalIgnoreCase) &&
-                    Directory.Exists(Path.Combine(dir, ".git")));
+            return ProjectFolderHelper.EnumerateGitRepositories(copilotOptions.Value.ProjectFoldersPath)
+                .FirstOrDefault(dir => string.Equals(Path.GetFileName(dir), projectName, StringComparison.OrdinalIgnoreCase));
         }
 
         private static readonly string[] _replyPrefixes = ["Re:", "Fwd:", "FW:"];

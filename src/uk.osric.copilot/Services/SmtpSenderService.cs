@@ -1,5 +1,6 @@
 namespace uk.osric.copilot.Services {
     using System.Diagnostics;
+    using uk.osric.copilot.Infrastructure;
     using MailKit.Net.Smtp;
     using MailKit.Security;
     using Microsoft.Extensions.Options;
@@ -12,7 +13,7 @@ namespace uk.osric.copilot.Services {
             CertificateService certificates,
             ILogger<SmtpSenderService> logger) {
 
-        private static readonly ActivitySource _activitySource = new("uk.osric.copilot");
+        
 
         public async Task SendReplyAsync(
                 string to,
@@ -21,7 +22,7 @@ namespace uk.osric.copilot.Services {
                 string? inReplyTo = null,
                 string? references = null,
                 CancellationToken cancellationToken = default) {
-            using var activity = _activitySource.StartActivity("smtp.send");
+            using var activity = CopilotTelemetry.ActivitySource.StartActivity("smtp.send");
             activity?.SetTag("messaging.system", "smtp");
             activity?.SetTag("messaging.operation.type", "send");
 
@@ -79,12 +80,9 @@ namespace uk.osric.copilot.Services {
             }
         }
 
-        private static SecureSocketOptions GetSmtpSocketOptions(SmtpOptions smtp) {
-            if (smtp.Tls == "Always") return SecureSocketOptions.SslOnConnect;
-            if (smtp.Tls == "StartTls") return SecureSocketOptions.StartTls;
-            return smtp.Port == 465 ? SecureSocketOptions.SslOnConnect
+        private static SecureSocketOptions GetSmtpSocketOptions(SmtpOptions smtp) =>
+            TlsHelper.FromTlsString(smtp.Tls) ?? (smtp.Port == 465 ? SecureSocketOptions.SslOnConnect
                 : smtp.Port == 587 ? SecureSocketOptions.StartTls
-                : SecureSocketOptions.Auto;
-        }
+                : SecureSocketOptions.Auto);
     }
 }

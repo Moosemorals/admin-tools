@@ -1,7 +1,7 @@
 # Build output
 bin/
 obj/
-dist/
+artifacts/
 publish/
 
 # NuGet
@@ -19,10 +19,4 @@ publish/
 # Runtime artefacts
 *.log
 
-# Migration tool – user config (contains secrets)
-src/GitMigrator/config.json
-
-# Migration state files (user-specific, not part of the tool)
-.migration-state.json
-*.migration-state.json
 src/uk.osric.copilot/copilot-sessions.db

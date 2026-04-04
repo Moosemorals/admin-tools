@@ -1,10 +1,4 @@
-# admin-tools
-
-A collection of tools to make life easier.
-
----
-
-## uk.osric.copilot
+# uk.osric.copilot
 
 A self-hosted web UI that wraps the [GitHub Copilot CLI](https://docs.github.com/en/copilot/github-copilot-in-the-cli/about-github-copilot-in-the-cli) and lets you chat with GitHub Copilot through a browser tab instead of a terminal.
 
@@ -71,7 +65,9 @@ The CLI will print a URL like `http://127.0.0.1:PORT`.  Copy it.
 ```json
 // src/uk.osric.copilot/appsettings.json
 {
-  "CopilotUrl": "http://127.0.0.1:<PORT>"
+  "Copilot": {
+    "CopilotUrl": "http://127.0.0.1:<PORT>"
+  }
 }
 ```
 
@@ -88,7 +84,7 @@ Open `http://localhost:5000` in your browser.
 
 ```bash
 make build
-# or: dotnet build src/uk.osric.copilot/uk.osric.copilot.csproj
+# or: dotnet build uk.osric.copilot.slnx
 ```
 
 ### Running in a container (production)
@@ -121,9 +117,10 @@ The unit:
 
 ### Configuration
 
-Both environment variables and `appsettings.json` keys are supported (ASP.NET Core configuration layering).
+All keys are nested under `"Copilot"` in `appsettings.json` or as environment variables with the `Copilot__` prefix (ASP.NET Core configuration layering).
 
 | Key | Default | Description |
 |-----|---------|-------------|
-| `DatabasePath` | `copilot-sessions.db` | Path to the SQLite database file |
-| `CopilotUrl` | *(empty)* | URL of a running `gh copilot server` process; leave blank to auto-discover |
+| `Copilot__DatabasePath` | `copilot-sessions.db` | Path to the SQLite database file |
+| `Copilot__CopilotUrl` | *(empty)* | URL of a running `gh copilot server` process; leave blank to auto-discover |
+| `Copilot__ProjectFoldersPath` | *(empty)* | Root directory scanned for git repositories to offer as session working directories |

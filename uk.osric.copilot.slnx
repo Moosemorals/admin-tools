@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="src/uk.osric.copilot/uk.osric.copilot.csproj" />
+  <Project Path="src/uk.osric.copilot.Tests/uk.osric.copilot.Tests.csproj" />
+</Solution>

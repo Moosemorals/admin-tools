@@ -9,6 +9,7 @@ namespace uk.osric.copilot.Services {
     using MimeKit;
     using uk.osric.copilot.Configuration;
     using uk.osric.copilot.Data;
+    using uk.osric.copilot.Infrastructure;
     using uk.osric.copilot.Models;
 
     public sealed class ImapListenerService(
@@ -171,14 +172,8 @@ namespace uk.osric.copilot.Services {
             await db.SaveChangesAsync(ct);
         }
 
-        private static SecureSocketOptions GetImapSocketOptions(ImapOptions imap) {
-            if (imap.Tls == "Always") {
-                return SecureSocketOptions.SslOnConnect;
-            }
-            if (imap.Tls == "StartTls") {
-                return SecureSocketOptions.StartTls;
-            }
-            return imap.Port == 993 ? SecureSocketOptions.SslOnConnect : SecureSocketOptions.StartTls;
-        }
+        private static SecureSocketOptions GetImapSocketOptions(ImapOptions imap) =>
+            TlsHelper.FromTlsString(imap.Tls)
+            ?? (imap.Port == 993 ? SecureSocketOptions.SslOnConnect : SecureSocketOptions.StartTls);
     }
 }

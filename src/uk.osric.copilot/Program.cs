@@ -17,12 +17,7 @@ namespace uk.osric.copilot.Web {
             var metrics = app.Services.GetRequiredService<CopilotMetrics>();
             var copilotOpts = app.Services.GetRequiredService<IOptions<CopilotOptions>>().Value;
             metrics.SetProjectCountCallback(() => {
-                var root = copilotOpts.ProjectFoldersPath;
-                if (string.IsNullOrWhiteSpace(root) || !Directory.Exists(root)) {
-                    return 0;
-                }
-                return Directory.EnumerateDirectories(root)
-                    .Count(dir => Directory.Exists(Path.Combine(dir, ".git")));
+                return ProjectFolderHelper.EnumerateGitRepositories(copilotOpts.ProjectFoldersPath).Count();
             });
 
             app.UseDefaultFiles();

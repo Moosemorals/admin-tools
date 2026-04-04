@@ -1,5 +1,6 @@
 namespace uk.osric.copilot.Services {
     using System.Diagnostics;
+    using uk.osric.copilot.Infrastructure;
     using System.Text.Json;
     using System.Text.Json.Nodes;
     using uk.osric.copilot.Data;
@@ -32,7 +33,7 @@ namespace uk.osric.copilot.Services {
             public Lock PendingInputsLock { get; } = new();
         }
 
-        private static readonly ActivitySource _activitySource = new("uk.osric.copilot");
+        
 
         // ── Fields ────────────────────────────────────────────────────────────
 
@@ -173,7 +174,7 @@ namespace uk.osric.copilot.Services {
         /// The message is stored first so the history is consistent even if the send fails.
         /// </summary>
         internal async Task<string> SendAsync(string sessionId, string prompt) {
-            using var activity = _activitySource.StartActivity("copilot.send");
+            using var activity = CopilotTelemetry.ActivitySource.StartActivity("copilot.send");
             activity?.SetTag("session.id", sessionId);
             var state = GetState(sessionId);
             await StoreAndBroadcastAsync("UserMessage", new { prompt }, sessionId: sessionId);
@@ -272,7 +273,7 @@ namespace uk.osric.copilot.Services {
         }
 
         private UserInputHandler BuildUserInputHandler(string sessionId) =>
-            async (request, cancellationToken) => {
+            async (request, invocation) => {
                 var requestId = Guid.NewGuid().ToString("N");
                 var tcs = new TaskCompletionSource<UserInputResponse>(
                     TaskCreationOptions.RunContinuationsAsynchronously);

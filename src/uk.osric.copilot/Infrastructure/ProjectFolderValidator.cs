@@ -2,12 +2,12 @@ namespace uk.osric.copilot.Infrastructure {
     internal static class ProjectFolderValidator {
         /// <summary>
         /// Validates that <paramref name="path"/> is an allowed project folder:
-        /// it must be a direct child of the configured <c>ProjectFoldersPath</c> and
+        /// it must be a direct child of <paramref name="projectFoldersPath"/> and
         /// must contain a <c>.git</c> directory.
         /// </summary>
         /// <returns>The canonical absolute path, or <c>null</c> if validation fails.</returns>
-        internal static string? Validate(IConfiguration config, string path) {
-            var root = config.GetValue<string>("ProjectFoldersPath") ?? string.Empty;
+        internal static string? Validate(string projectFoldersPath, string path) {
+            var root = projectFoldersPath;
             if (string.IsNullOrWhiteSpace(root)) {
                 return null;
             }
