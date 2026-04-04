@@ -43,23 +43,25 @@ namespace uk.osric.copilot.Services {
 
             logger.LogInformation("IMAP connected to {Host}. INBOX has {Count} messages.", imap.Host, client.Inbox.Count);
 
+            if (!client.Capabilities.HasFlag(ImapCapabilities.Idle)) {
+                throw new InvalidOperationException("IMAP server does not support IDLE. A server with IDLE support is required.");
+            }
+
             var lastCount = client.Inbox.Count;
+            var idleTimeoutMinutes = options.Value.ImapIdleTimeoutMinutes > 0
+                ? options.Value.ImapIdleTimeoutMinutes
+                : 27;
 
             while (!stoppingToken.IsCancellationRequested) {
-                if (client.Capabilities.HasFlag(ImapCapabilities.Idle)) {
-                    using var done = new CancellationTokenSource(TimeSpan.FromMinutes(9));
-                    void onCountChanged(object? sender, EventArgs e) => done.Cancel();
-                    client.Inbox.CountChanged += onCountChanged;
-                    try {
-                        await client.IdleAsync(done.Token, stoppingToken);
-                    } catch (OperationCanceledException) when (!stoppingToken.IsCancellationRequested) {
-                        // Count changed or idle timed out — both are normal
-                    } finally {
-                        client.Inbox.CountChanged -= onCountChanged;
-                    }
-                } else {
-                    await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
-                    await client.NoOpAsync(stoppingToken);
+                using var done = new CancellationTokenSource(TimeSpan.FromMinutes(idleTimeoutMinutes));
+                void onCountChanged(object? sender, EventArgs e) => done.Cancel();
+                client.Inbox.CountChanged += onCountChanged;
+                try {
+                    await client.IdleAsync(done.Token, stoppingToken);
+                } catch (OperationCanceledException) when (!stoppingToken.IsCancellationRequested) {
+                    // Count changed or idle timed out — both are normal
+                } finally {
+                    client.Inbox.CountChanged -= onCountChanged;
                 }
 
                 var currentCount = client.Inbox.Count;
@@ -80,8 +82,12 @@ namespace uk.osric.copilot.Services {
         }
 
         private static SecureSocketOptions GetImapSocketOptions(ImapOptions imap) {
-            if (imap.Tls == "Always") return SecureSocketOptions.SslOnConnect;
-            if (imap.Tls == "StartTls") return SecureSocketOptions.StartTls;
+            if (imap.Tls == "Always") {
+                return SecureSocketOptions.SslOnConnect;
+            }
+            if (imap.Tls == "StartTls") {
+                return SecureSocketOptions.StartTls;
+            }
             return imap.Port == 993 ? SecureSocketOptions.SslOnConnect : SecureSocketOptions.StartTls;
         }
     }

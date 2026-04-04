@@ -86,11 +86,13 @@ namespace uk.osric.copilot.Tests.Unit {
         }
 
         [Test]
-        public void RecordProcessed_IncrementsProcessedCounter() {
+        public void RecordProcessed_IncrementsProcessedCounterWithSuccessTag() {
             _sut.RecordProcessed();
 
             var m = _measurements.Single(x => x.Name == "email.messages.processed");
             Assert.That(m.Value, Is.EqualTo(1));
+            Assert.That(m.Tags, Has.One.Matches<KeyValuePair<string, object?>>(
+                t => t.Key == "outcome" && (string?)t.Value == "success"));
         }
 
         private (string Name, long Value, KeyValuePair<string, object?>[] Tags) AssertDroppedWith(string outcome) {

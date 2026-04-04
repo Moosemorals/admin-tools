@@ -15,7 +15,6 @@ namespace uk.osric.copilot.Services {
             ChannelReader<MimeMessage> messageChannel,
             CertificateService certificates,
             CopilotService copilot,
-            SseBroadcaster broadcaster,
             SmtpSenderService smtp,
             EmailMetrics metrics,
             IConfiguration config,
@@ -77,8 +76,9 @@ namespace uk.osric.copilot.Services {
 
             X509Certificate2 senderCert;
             try {
-                if (firstSig.SignerCertificate is not SecureMimeDigitalCertificate smimeCert)
+                if (firstSig.SignerCertificate is not SecureMimeDigitalCertificate smimeCert) {
                     throw new InvalidOperationException("Signer certificate is not an S/MIME certificate.");
+                }
                 senderCert = X509CertificateLoader.LoadCertificate(smimeCert.Certificate.GetEncoded());
             } catch (Exception ex) {
                 logger.LogWarning(ex, "Failed to extract signer certificate for message {Id}.", message.MessageId);
@@ -108,60 +108,13 @@ namespace uk.osric.copilot.Services {
             var session = sessions.FirstOrDefault(s =>
                 string.Equals(s.WorkingDirectory, projectDir, StringComparison.OrdinalIgnoreCase));
             if (session is null) {
-                session = await copilot.CreateSessionAsync(projectDir);
+                session = await copilot.CreateSessionAsync(projectDir, certRecord.EmailAddress);
             }
 
             var body = ExtractTextBody(message);
-            var sw = Stopwatch.StartNew();
-            var reader = broadcaster.Subscribe();
-            try {
-                await copilot.SendAsync(session.Id, body);
-                var response = await WaitForResponseAsync(reader, session.Id, stoppingToken);
-                sw.Stop();
-                metrics.RecordProcessed();
-                metrics.RecordRequestDuration(sw.Elapsed.TotalSeconds);
-                await smtp.SendReplyAsync(certRecord.EmailAddress, $"Re: {projectName}", response, stoppingToken);
-                logger.LogInformation("Processed and replied to message {Id}.", message.MessageId);
-            } finally {
-                broadcaster.Unsubscribe(reader);
-            }
-        }
-
-        private async Task<string> WaitForResponseAsync(
-                ChannelReader<SseMessage> reader,
-                string sessionId,
-                CancellationToken stoppingToken) {
-            using var cts = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
-            cts.CancelAfter(TimeSpan.FromMinutes(5));
-
-            var sb = new StringBuilder();
-            try {
-                while (await reader.WaitToReadAsync(cts.Token)) {
-                    while (reader.TryRead(out var msg)) {
-                        if (msg.Json is null) continue;
-                        try {
-                            using var doc = JsonDocument.Parse(msg.Json);
-                            var root = doc.RootElement;
-                            if (!root.TryGetProperty("_sessionId", out var sidProp) ||
-                                sidProp.GetString() != sessionId) continue;
-                            if (!root.TryGetProperty("_eventType", out var etProp)) continue;
-                            var eventType = etProp.GetString();
-                            if (eventType == "ProgressMessage" &&
-                                root.TryGetProperty("text", out var textProp)) {
-                                sb.Append(textProp.GetString());
-                            }
-                            if (eventType?.EndsWith("Complete", StringComparison.Ordinal) == true ||
-                                eventType is "CompletedMessage") {
-                                return sb.Length > 0 ? sb.ToString() : "Request completed.";
-                            }
-                        } catch (JsonException) { }
-                    }
-                }
-            } catch (OperationCanceledException) { }
-
-            return sb.Length > 0
-                ? sb.ToString()
-                : "Your prompt was submitted to Copilot. Check the web UI for the full response.";
+            await copilot.SendAsync(session.Id, body);
+            metrics.RecordProcessed();
+            logger.LogInformation("Submitted message {Id} to Copilot session {SessionId}.", message.MessageId, session.Id);
         }
 
         private async Task SendProjectListReplyAsync(
@@ -182,9 +135,13 @@ namespace uk.osric.copilot.Services {
         }
 
         private string? FindProjectDirectory(string projectName) {
-            if (string.IsNullOrWhiteSpace(projectName)) return null;
+            if (string.IsNullOrWhiteSpace(projectName)) {
+                return null;
+            }
             var root = config.GetValue<string>("ProjectFoldersPath") ?? string.Empty;
-            if (string.IsNullOrWhiteSpace(root) || !Directory.Exists(root)) return null;
+            if (string.IsNullOrWhiteSpace(root) || !Directory.Exists(root)) {
+                return null;
+            }
             return Directory.EnumerateDirectories(root)
                 .FirstOrDefault(dir =>
                     string.Equals(Path.GetFileName(dir), projectName, StringComparison.OrdinalIgnoreCase) &&

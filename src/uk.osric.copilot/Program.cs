@@ -12,10 +12,12 @@ namespace uk.osric.copilot.Web {
             var app = builder.Build();
             await app.InitialiseDatabaseAsync();
 
-            var metrics = app.Services.GetRequiredService<EmailMetrics>();
+            var metrics = app.Services.GetRequiredService<CopilotMetrics>();
             metrics.SetProjectCountCallback(() => {
                 var root = app.Configuration.GetValue<string>("ProjectFoldersPath") ?? string.Empty;
-                if (string.IsNullOrWhiteSpace(root) || !Directory.Exists(root)) return 0;
+                if (string.IsNullOrWhiteSpace(root) || !Directory.Exists(root)) {
+                    return 0;
+                }
                 return Directory.EnumerateDirectories(root)
                     .Count(dir => Directory.Exists(Path.Combine(dir, ".git")));
             });
