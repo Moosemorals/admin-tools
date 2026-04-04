@@ -71,6 +71,28 @@ namespace uk.osric.copilot.Migrations {
                 b.ToTable("email_certificates", (string)null);
             });
 
+            modelBuilder.Entity("uk.osric.copilot.Models.ImapSyncState", b => {
+                b.Property<int>("Id")
+                    .HasColumnType("INTEGER")
+                    .HasColumnName("id");
+
+                b.Property<long>("UidValidity")
+                    .HasColumnType("INTEGER")
+                    .HasColumnName("uid_validity");
+
+                b.Property<long>("HighestModSeq")
+                    .HasColumnType("INTEGER")
+                    .HasColumnName("highest_mod_seq");
+
+                b.Property<long>("LastSeenUid")
+                    .HasColumnType("INTEGER")
+                    .HasColumnName("last_seen_uid");
+
+                b.HasKey("Id");
+
+                b.ToTable("imap_sync_state", (string)null);
+            });
+
             modelBuilder.Entity("uk.osric.copilot.Models.Session", b => {
                 b.Property<string>("Id")
                     .HasColumnType("TEXT")

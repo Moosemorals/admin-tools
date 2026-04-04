@@ -10,6 +10,7 @@ namespace uk.osric.copilot.Data {
         public DbSet<Session> Sessions { get; set; } = null!;
         public DbSet<SessionMessage> Messages { get; set; } = null!;
         public DbSet<EmailCertificate> EmailCertificates { get; set; } = null!;
+        public DbSet<ImapSyncState> ImapSyncStates { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder) {
             modelBuilder.Entity<Session>(entity => {
@@ -78,6 +79,21 @@ namespace uk.osric.copilot.Data {
                           v => v.ToString("O"),
                           v => DateTimeOffset.ParseExact(v, "O", null));
                 entity.HasIndex(e => e.EmailAddress).HasDatabaseName("IX_email_certificates_email_address");
+            });
+
+            modelBuilder.Entity<ImapSyncState>(entity => {
+                entity.ToTable("imap_sync_state");
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.Id).HasColumnName("id").ValueGeneratedNever();
+                entity.Property(e => e.UidValidity)
+                      .HasColumnName("uid_validity")
+                      .HasConversion(v => (long)v, v => (uint)v);
+                entity.Property(e => e.HighestModSeq)
+                      .HasColumnName("highest_mod_seq")
+                      .HasConversion(v => (long)v, v => (ulong)v);
+                entity.Property(e => e.LastSeenUid)
+                      .HasColumnName("last_seen_uid")
+                      .HasConversion(v => (long)v, v => (uint)v);
             });
         }
     }

@@ -62,9 +62,22 @@ namespace uk.osric.copilot.Migrations {
                 name: "IX_messages_session_id",
                 table: "messages",
                 column: "session_id");
+
+            migrationBuilder.CreateTable(
+                name: "imap_sync_state",
+                columns: table => new {
+                    id = table.Column<int>(type: "INTEGER", nullable: false),
+                    uid_validity = table.Column<long>(type: "INTEGER", nullable: false),
+                    highest_mod_seq = table.Column<long>(type: "INTEGER", nullable: false),
+                    last_seen_uid = table.Column<long>(type: "INTEGER", nullable: false)
+                },
+                constraints: table => {
+                    table.PrimaryKey("PK_imap_sync_state", x => x.id);
+                });
         }
 
         protected override void Down(MigrationBuilder migrationBuilder) {
+            migrationBuilder.DropTable(name: "imap_sync_state");
             migrationBuilder.DropTable(name: "messages");
             migrationBuilder.DropTable(name: "sessions");
             migrationBuilder.DropTable(name: "email_certificates");
