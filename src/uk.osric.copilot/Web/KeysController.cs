@@ -1,5 +1,6 @@
 namespace uk.osric.copilot.Web {
     using Microsoft.AspNetCore.Mvc;
+    using uk.osric.copilot.Models;
     using uk.osric.copilot.Services;
 
     [ApiController]
@@ -24,14 +25,14 @@ namespace uk.osric.copilot.Web {
             }));
         }
 
-        /// <summary>Generates a new ECDSA P-256 key pair and self-signed certificate.</summary>
+        /// <summary>Generates a new key pair and self-signed certificate.</summary>
         [HttpPost("/api/keys/generate")]
         public async Task<IActionResult> GenerateKey([FromBody] GenerateKeyRequest body) {
             if (string.IsNullOrWhiteSpace(body.EmailAddress))
                 return BadRequest("emailAddress is required.");
 
             var validDays = body.ValidDays > 0 ? body.ValidDays : 365;
-            var cert = await certificates.GenerateKeyPairAsync(body.EmailAddress, validDays);
+            var cert = await certificates.GenerateKeyPairAsync(body.EmailAddress, validDays, body.KeyType);
             return Ok(new {
                 cert.Id,
                 cert.EmailAddress,
@@ -66,5 +67,5 @@ namespace uk.osric.copilot.Web {
         }
     }
 
-    public sealed record GenerateKeyRequest(string EmailAddress, int ValidDays = 365);
+    public sealed record GenerateKeyRequest(string EmailAddress, int ValidDays = 365, KeyType KeyType = KeyType.Ecdsa);
 }

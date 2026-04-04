@@ -7,12 +7,26 @@ namespace uk.osric.copilot.Services {
 
     public sealed class CertificateService(IDbContextFactory<CopilotDbContext> dbFactory) {
 
-        public async Task<EmailCertificate> GenerateKeyPairAsync(string emailAddress, int validDays) {
-            using var ecdsa = ECDsa.Create(ECCurve.NamedCurves.nistP256);
-            var req = new CertificateRequest(
-                $"CN={emailAddress}, E={emailAddress}",
-                ecdsa,
-                HashAlgorithmName.SHA256);
+        public async Task<EmailCertificate> GenerateKeyPairAsync(string emailAddress, int validDays, KeyType keyType = KeyType.Ecdsa) {
+            AsymmetricAlgorithm key = keyType == KeyType.Rsa
+                ? RSA.Create(2048)
+                : (AsymmetricAlgorithm)ECDsa.Create(ECCurve.NamedCurves.nistP256);
+
+            using var disposableKey = key;
+
+            CertificateRequest req;
+            if (key is RSA rsa) {
+                req = new CertificateRequest(
+                    $"CN={emailAddress}, E={emailAddress}",
+                    rsa,
+                    HashAlgorithmName.SHA256,
+                    RSASignaturePadding.Pkcs1);
+            } else {
+                req = new CertificateRequest(
+                    $"CN={emailAddress}, E={emailAddress}",
+                    (ECDsa)key,
+                    HashAlgorithmName.SHA256);
+            }
 
             var san = new SubjectAlternativeNameBuilder();
             san.AddEmailAddress(emailAddress);

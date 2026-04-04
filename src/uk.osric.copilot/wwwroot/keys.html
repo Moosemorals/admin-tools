@@ -1,182 +1,87 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Email Key Management</title>
-    <style>
-        *, *::before, *::after { box-sizing: border-box; }
-        body { font-family: system-ui, sans-serif; margin: 0; padding: 1.5rem; background: #f5f5f5; color: #222; }
-        h1 { margin: 0 0 1.5rem; font-size: 1.4rem; }
-        .card { background: #fff; border: 1px solid #ddd; border-radius: 6px; padding: 1.25rem; margin-bottom: 1.25rem; }
-        .row { display: flex; gap: 0.75rem; align-items: flex-end; flex-wrap: wrap; }
-        label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.3rem; }
-        input[type=text], input[type=number], input[type=email] {
-            padding: 0.45rem 0.65rem; border: 1px solid #bbb; border-radius: 4px;
-            font-size: 0.9rem; width: 100%;
-        }
-        .field { flex: 1; min-width: 160px; }
-        button {
-            padding: 0.45rem 1rem; border: none; border-radius: 4px; cursor: pointer;
-            font-size: 0.9rem; font-weight: 600; white-space: nowrap;
-        }
-        .btn-primary { background: #0066cc; color: #fff; }
-        .btn-primary:hover { background: #0052a3; }
-        .btn-danger { background: #cc2200; color: #fff; font-size: 0.8rem; padding: 0.3rem 0.65rem; }
-        .btn-danger:hover { background: #a81b00; }
-        .btn-secondary { background: #555; color: #fff; }
-        .btn-secondary:hover { background: #333; }
-        .btn-small { background: #0066cc; color: #fff; font-size: 0.8rem; padding: 0.3rem 0.65rem; }
-        .btn-small:hover { background: #0052a3; }
-        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
-        th { background: #f0f0f0; text-align: left; padding: 0.5rem 0.7rem; border-bottom: 2px solid #ccc; }
-        td { padding: 0.45rem 0.7rem; border-bottom: 1px solid #eee; vertical-align: middle; }
-        tr:hover td { background: #fafafa; }
-        .badge { display: inline-block; padding: 0.2rem 0.5rem; border-radius: 3px; font-size: 0.75rem; font-weight: 700; }
-        .badge-valid { background: #d4edda; color: #155724; }
-        .badge-expired { background: #fff3cd; color: #856404; }
-        .badge-revoked { background: #f8d7da; color: #721c24; }
-        .msg { padding: 0.65rem 1rem; border-radius: 4px; margin-top: 0.75rem; font-size: 0.875rem; }
-        .msg-ok { background: #d4edda; color: #155724; }
-        .msg-err { background: #f8d7da; color: #721c24; }
-        #table-section { display: none; }
-        .actions { display: flex; gap: 0.4rem; }
-        code { font-size: 0.78rem; word-break: break-all; }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Email Key Management</title>
+  <link rel="stylesheet" href="/css/app.css" />
+  <style>
+    body { display: block; padding: 1.5rem; overflow: auto; height: auto; }
+    h1   { font-size: 1.2rem; color: var(--blue); margin-bottom: 1.25rem; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 1.25rem; margin-bottom: 1.25rem; }
+    .row  { display: flex; gap: 0.75rem; align-items: flex-end; flex-wrap: wrap; }
+    .field { flex: 1; min-width: 160px; }
+    label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.3rem; color: var(--text-muted); }
+    input[type=text], input[type=number], input[type=email], select {
+      padding: 0.45rem 0.65rem; border: 1px solid var(--border); border-radius: 4px;
+      font: inherit; width: 100%; background: var(--bg); color: var(--text);
+    }
+    input:focus, select:focus { outline: none; border-color: var(--blue); }
+    .btn { padding: 0.45rem 1rem; border: none; border-radius: 4px; cursor: pointer; font: inherit; font-weight: 600; white-space: nowrap; }
+    .btn-primary { background: var(--btn-bg); color: #fff; border: 1px solid var(--btn-border); }
+    .btn-primary:hover { background: var(--btn-hover); }
+    .btn-danger  { background: none; color: var(--red); border: 1px solid var(--red); font-size: 0.8rem; padding: 0.3rem 0.65rem; border-radius: 4px; }
+    .btn-danger:hover { background: var(--red); color: #fff; }
+    .btn-small   { background: none; color: var(--blue); border: 1px solid var(--blue); font-size: 0.8rem; padding: 0.3rem 0.65rem; border-radius: 4px; }
+    .btn-small:hover { background: var(--blue); color: var(--bg); }
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    th { background: var(--hover); text-align: left; padding: 0.5rem 0.7rem; border-bottom: 2px solid var(--border); color: var(--text-muted); }
+    td { padding: 0.45rem 0.7rem; border-bottom: 1px solid var(--border); vertical-align: middle; color: var(--text); }
+    tr:hover td { background: var(--hover); }
+    .badge { display: inline-block; padding: 0.2rem 0.5rem; border-radius: 3px; font-size: 0.75rem; font-weight: 700; }
+    .badge-valid   { background: color-mix(in srgb, var(--green) 15%, transparent); color: var(--green); }
+    .badge-expired { background: color-mix(in srgb, var(--yellow) 15%, transparent); color: var(--yellow); }
+    .badge-revoked { background: color-mix(in srgb, var(--red) 15%, transparent); color: var(--red); }
+    .msg { padding: 0.65rem 1rem; border-radius: 4px; margin-top: 0.75rem; font-size: 0.875rem; }
+    .msg-ok  { background: color-mix(in srgb, var(--green) 15%, transparent); color: var(--green); }
+    .msg-err { background: color-mix(in srgb, var(--red) 15%, transparent); color: var(--red); }
+    #table-section { display: none; }
+    .actions { display: flex; gap: 0.4rem; }
+    code { font-size: 0.78rem; word-break: break-all; color: var(--text-muted); }
+  </style>
 </head>
 <body>
-    <h1>Email Key Management</h1>
+  <h1>Email Key Management</h1>
 
-    <div class="card">
-        <div class="row">
-            <div class="field">
-                <label for="emailInput">Email address</label>
-                <input type="email" id="emailInput" placeholder="user@example.com">
-            </div>
-            <div class="field" style="max-width:140px">
-                <label for="daysInput">Validity (days)</label>
-                <input type="number" id="daysInput" value="365" min="1" max="3650">
-            </div>
-            <button class="btn-primary" onclick="generateKey()">Generate</button>
-            <button class="btn-secondary" onclick="loadKeys()">Load</button>
-        </div>
-        <div id="genMsg"></div>
+  <div class="card">
+    <div class="row">
+      <div class="field">
+        <label for="emailInput">Email address</label>
+        <input type="email" id="emailInput" placeholder="user@example.com" />
+      </div>
+      <div class="field" style="max-width:160px">
+        <label for="daysInput">Validity (days)</label>
+        <input type="number" id="daysInput" value="365" min="1" max="3650" />
+      </div>
+      <div class="field" style="max-width:160px">
+        <label for="keyTypeSelect">Key type</label>
+        <select id="keyTypeSelect">
+          <option value="Ecdsa">ECDSA P-256</option>
+          <option value="Rsa">RSA 2048</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" id="generateBtn">Generate</button>
+      <button class="btn btn-primary" id="loadBtn" style="background:none;color:var(--text);border:1px solid var(--border)">Load</button>
     </div>
+    <div id="genMsg"></div>
+  </div>
 
-    <div class="card" id="table-section">
-        <table id="certsTable">
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Serial</th>
-                    <th>Not Before</th>
-                    <th>Not After</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody id="certsBody"></tbody>
-        </table>
-    </div>
+  <div class="card" id="table-section">
+    <table id="certsTable">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Fingerprint</th>
+          <th>Not Before</th>
+          <th>Not After</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="certsBody"></tbody>
+    </table>
+  </div>
 
-    <script>
-        function fmtDate(iso) {
-            return iso ? new Date(iso).toLocaleString() : '';
-        }
-
-        function certStatus(c) {
-            if (c.isRevoked) return '<span class="badge badge-revoked">Revoked</span>';
-            const now = Date.now();
-            const nb = new Date(c.notBefore).getTime();
-            const na = new Date(c.notAfter).getTime();
-            if (now < nb || now > na) return '<span class="badge badge-expired">Expired</span>';
-            return '<span class="badge badge-valid">Valid</span>';
-        }
-
-        function showMsg(elId, text, ok) {
-            const el = document.getElementById(elId);
-            el.className = 'msg ' + (ok ? 'msg-ok' : 'msg-err');
-            el.textContent = text;
-        }
-
-        async function generateKey() {
-            const email = document.getElementById('emailInput').value.trim();
-            const days = parseInt(document.getElementById('daysInput').value, 10) || 365;
-            if (!email) { showMsg('genMsg', 'Please enter an email address.', false); return; }
-            try {
-                const res = await fetch('/api/keys/generate', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ emailAddress: email, validDays: days })
-                });
-                if (!res.ok) { showMsg('genMsg', `Error: ${res.status} ${res.statusText}`, false); return; }
-                const data = await res.json();
-                showMsg('genMsg',
-                    `Generated key ID ${data.id} — serial ${data.serialNumber}. ` +
-                    `Valid until ${fmtDate(data.notAfter)}.`, true);
-                const genMsg = document.getElementById('genMsg');
-                const link = document.createElement('a');
-                link.href = data.downloadUrl;
-                link.textContent = ' Download PFX';
-                link.style.marginLeft = '0.5rem';
-                genMsg.appendChild(link);
-                loadKeys();
-            } catch (e) {
-                showMsg('genMsg', `Network error: ${e.message}`, false);
-            }
-        }
-
-        async function loadKeys() {
-            const email = document.getElementById('emailInput').value.trim();
-            if (!email) { showMsg('genMsg', 'Please enter an email address.', false); return; }
-            try {
-                const res = await fetch(`/api/keys?email=${encodeURIComponent(email)}`);
-                if (!res.ok) { showMsg('genMsg', `Error: ${res.status} ${res.statusText}`, false); return; }
-                const certs = await res.json();
-                renderTable(certs);
-            } catch (e) {
-                showMsg('genMsg', `Network error: ${e.message}`, false);
-            }
-        }
-
-        function renderTable(certs) {
-            const section = document.getElementById('table-section');
-            const tbody = document.getElementById('certsBody');
-            tbody.innerHTML = '';
-            if (certs.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#888">No certificates found.</td></tr>';
-            } else {
-                certs.forEach(c => {
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = `
-                        <td>${c.id}</td>
-                        <td><code>${c.serialNumber}</code></td>
-                        <td>${fmtDate(c.notBefore)}</td>
-                        <td>${fmtDate(c.notAfter)}</td>
-                        <td>${certStatus(c)}</td>
-                        <td class="actions">
-                            <a href="/api/keys/${c.id}/download"><button class="btn-small">Download</button></a>
-                            ${!c.isRevoked ? `<button class="btn-danger" onclick="revokeKey(${c.id})">Revoke</button>` : ''}
-                        </td>`;
-                    tbody.appendChild(tr);
-                });
-            }
-            section.style.display = 'block';
-        }
-
-        async function revokeKey(id) {
-            if (!confirm(`Revoke certificate ID ${id}? This cannot be undone.`)) return;
-            try {
-                const res = await fetch(`/api/keys/${id}`, { method: 'DELETE' });
-                if (res.ok || res.status === 204) {
-                    loadKeys();
-                } else {
-                    alert(`Failed to revoke: ${res.status} ${res.statusText}`);
-                }
-            } catch (e) {
-                alert(`Network error: ${e.message}`);
-            }
-        }
-    </script>
+  <script type="module" src="/js/keys.js"></script>
 </body>
 </html>
